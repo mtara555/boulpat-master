@@ -41,6 +41,8 @@ button,select{font:inherit;color:inherit}
 .chip select option{color:var(--encre)}
 .dot{width:10px;height:10px;border-radius:50%;background:var(--ok)}
 .dot.off{background:var(--croute)}
+#authBtn{font-weight:600}
+#authBtn.connected{background:rgba(255,255,255,.18)}
 
 .shell{display:grid;grid-template-columns:220px 1fr;min-height:0}
 .nav{background:var(--pate);border-inline-end:1px solid var(--trait);padding:12px;display:flex;flex-direction:column;gap:4px}
@@ -773,6 +775,124 @@ window.addEventListener('beforeunload', e => { if(S.dirty){ e.preventDefault(); 
 const h0 = location.hash.slice(1); if(NAV.includes(h0)) S.view = h0;
 render();
 if('serviceWorker' in navigator){ window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {})); }
+  /* ============ ÉTAPE 4 : Connexion Firebase ============ */
+(async () => {
+  let fb;
+  try {
+    fb = await import('./firebase-sync.js');
+  } catch(e){
+    console.warn('[Firebase] Module indisponible — mode local uniquement', e);
+    return;
+  }
+
+  const authBtn = $('#authBtn');
+  let currentUser = null;
+  let unsubFiches = null;
+
+  function renderAuthBtn(){
+    if(currentUser){
+      const name = (currentUser.displayName || currentUser.email || 'moi').split('@')[0];
+      authBtn.textContent = '☁️ ' + name;
+      authBtn.title = 'Se déconnecter (' + currentUser.email + ')';
+      authBtn.classList.add('connected');
+    } else {
+      authBtn.textContent = '🔒 Connexion';
+      authBtn.title = 'Se connecter';
+      authBtn.classList.remove('connected');
+    }
+  }
+
+  function showLoginModal(){
+    if(document.getElementById('loginModal')) return;
+    const dlg = document.createElement('div');
+    dlg.id = 'loginModal';
+    dlg.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);display:grid;place-items:center;z-index:100;padding:16px';
+    dlg.innerHTML = `
+      <div style="background:#fff;border-radius:16px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);color:#1D2A2E;font-family:inherit">
+        <h2 style="margin:0 0 6px;font-size:1.3rem">Connexion BOULPAT</h2>
+        <p style="margin:0 0 18px;color:#5B6B70;font-size:.93rem">Connectez-vous pour synchroniser vos fiches dans le cloud.</p>
+        <label style="display:grid;gap:6px;margin-bottom:12px"><span style="font-weight:600;font-size:.92rem">Email</span>
+          <input id="lm_email" type="email" autocomplete="email" style="padding:10px 12px;border:1px solid #D6DCD8;border-radius:10px;font:inherit"></label>
+        <label style="display:grid;gap:6px;margin-bottom:16px"><span style="font-weight:600;font-size:.92rem">Mot de passe</span>
+          <input id="lm_pwd" type="password" autocomplete="current-password" style="padding:10px 12px;border:1px solid #D6DCD8;border-radius:10px;font:inherit"></label>
+        <div id="lm_err" style="color:#9A3B3B;font-size:.88rem;min-height:20px;margin-bottom:10px"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button id="lm_login" style="flex:1;background:#0E5A57;color:#fff;border:0;border-radius:10px;padding:12px;font-weight:700;cursor:pointer;font:inherit">Se connecter</button>
+          <button id="lm_signup" style="flex:1;background:transparent;color:#0E5A57;border:1px solid #0E5A57;border-radius:10px;padding:12px;font-weight:700;cursor:pointer;font:inherit">Créer un compte</button>
+        </div>
+        <div style="text-align:center;margin:14px 0;color:#5B6B70;font-size:.85rem">— ou —</div>
+        <button id="lm_google" style="width:100%;background:#fff;color:#1D2A2E;border:1px solid #D6DCD8;border-radius:10px;padding:12px;font-weight:600;cursor:pointer;font:inherit">Continuer avec Google</button>
+        <button id="lm_close" style="margin-top:16px;background:none;border:0;color:#5B6B70;cursor:pointer;font:inherit;width:100%;padding:8px">Fermer</button>
+      </div>`;
+    document.body.appendChild(dlg);
+
+    const email = dlg.querySelector('#lm_email');
+    const pwd   = dlg.querySelector('#lm_pwd');
+    const err   = dlg.querySelector('#lm_err');
+    const close = () => dlg.remove();
+
+    dlg.querySelector('#lm_close').onclick = close;
+    dlg.onclick = e => { if(e.target === dlg) close(); };
+
+    dlg.querySelector('#lm_login').onclick = async () => {
+      err.textContent = '';
+      try { await fb.loginEmail(email.value.trim(), pwd.value); close(); }
+      catch(e){ err.textContent = 'Erreur : ' + (e.code || e.message); }
+    };
+    dlg.querySelector('#lm_signup').onclick = async () => {
+      err.textContent = '';
+      if(pwd.value.length < 6){ err.textContent = 'Mot de passe : 6 caractères minimum.'; return; }
+      try { await fb.signupEmail(email.value.trim(), pwd.value); close(); }
+      catch(e){ err.textContent = 'Erreur : ' + (e.code || e.message); }
+    };
+    dlg.querySelector('#lm_google').onclick = async () => {
+      err.textContent = '';
+      try { await fb.loginGoogle(); close(); }
+      catch(e){ err.textContent = 'Erreur : ' + (e.code || e.message); }
+    };
+  }
+
+  authBtn.onclick = async () => {
+    if(currentUser){
+      if(confirm('Se déconnecter ? Vos fiches locales restent sur cet appareil.')){
+        await fb.logout();
+      }
+    } else {
+      showLoginModal();
+    }
+  };
+
+  fb.watchAuth(async user => {
+    currentUser = user;
+    renderAuthBtn();
+
+    if(unsubFiches){ unsubFiches(); unsubFiches = null; }
+
+    if(user){
+      if(!fb.hasMigrated() && S.fiches.length){
+        toast('☁️ Synchronisation initiale…');
+        try {
+          await fb.migrateLocalToCloud(S.fiches);
+          fb.markMigrated();
+          toast('Fiches synchronisées ☁️');
+        } catch(e){ console.error('Migration échouée', e); }
+      }
+
+      unsubFiches = fb.watchFiches(cloudFiches => {
+        if(!cloudFiches || !cloudFiches.length) return;
+        S.fiches = cloudFiches;
+        try{ localStorage.setItem('bpm.fiches', JSON.stringify(cloudFiches)); }catch(e){}
+        if(S.view === 'fiches' && S.fv.mode !== 'edit') render();
+      });
+
+      toast('Connecté : ' + (user.displayName || user.email || 'utilisateur'));
+    } else {
+      toast('Mode local (non connecté)');
+    }
+  });
+
+  renderAuthBtn();
+})();
 
 </script>
 </body>
