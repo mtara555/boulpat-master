@@ -1,7 +1,12 @@
 // firebase-config.js
-// Configuration Firebase publique — versionnée dans le repo
-// ⚠️ Ces clés sont PUBLIQUES par design (Google recommande de les exposer)
-// La sécurité vient des règles Firestore, pas de ces clés.
+// ============================================================
+// BOULPAT MASTER — Configuration Firebase
+// ------------------------------------------------------------
+// ⚠️ IMPORTANT : Ces clés sont PUBLIQUES par design.
+//    Google recommande de les exposer dans le code source.
+//    La sécurité vient des RÈGLES FIRESTORE, pas de ces clés.
+//    Ne JAMAIS mettre ici de serviceAccountKey.json (secret serveur).
+// ============================================================
 
 export const firebaseConfig = {
   apiKey: "AIzaSyDV94C3SF3gys83bQ1N7ycgYpTNkbDxEpA",
@@ -12,6 +17,16 @@ export const firebaseConfig = {
   appId: "1:669423086380:web:3861c01f54cbba19321a89"
 };
 
-// Identifiant de votre "entreprise" — utilisé comme racine dans Firestore
-// Pour l'instant fixe, plus tard on gérera plusieurs entreprises
+// ============================================================
+// IDENTIFIANT ENTREPRISE
+// ------------------------------------------------------------
+// Racine multi-tenant dans Firestore :
+//   companies/{COMPANY_ID}/fiches/{ficheId}
+//   companies/{COMPANY_ID}/ofs/{ofId}
+//
+// Pour l'instant : une seule entreprise ("la-patisserie").
+// Plus tard : on pourra gérer plusieurs enseignes / franchisés
+// en changeant simplement cette valeur (ou en la rendant dynamique).
+// ============================================================
+
 export const COMPANY_ID = "la-patisserie";
