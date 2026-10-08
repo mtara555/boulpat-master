@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0E5A57">
+<title>BOULPAT MASTER</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+:root{
+  --four:#0E5A57;      /* vert zellige : actions, navigation */
+  --four-ink:#093D3B;
+  --farine:#F2F4F1;    /* fond */
+  --pate:#FFFFFF;      /* surfaces */
+  --croute:#E0A526;    /* accent : état actif, alertes douces */
+  --encre:#1D2A2E;
+  --encre-2:#5B6B70;
+  --trait:#D6DCD8;
+  --ok:#2E7D4F; --warn:#B7791F; --off:#9A3B3B;
+  --r:14px;
+  --font:"Segoe UI",system-ui,-apple-system,"Noto Sans Arabic","Noto Sans",Tahoma,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--farine);color:var(--encre);font-family:var(--font);font-size:16px;line-height:1.5;
+  padding-top:env(safe-area-inset-top);-webkit-tap-highlight-color:transparent}
+button,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--croute);outline-offset:2px}
+
+/* Structure */
+.app{display:grid;grid-template-rows:auto 1fr;min-height:100%}
+.top{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--four);color:#fff}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px;margin-inline-end:auto}
+.brand img{width:36px;height:36px;border-radius:50%;background:#fff}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.35);background:transparent;
+  color:#fff;border-radius:999px;padding:6px 12px;min-height:40px;cursor:pointer}
+.chip:hover{background:rgba(255,255,255,.12)}
+.chip select{background:transparent;border:0;color:#fff;cursor:pointer}
+.chip select option{color:var(--encre)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--ok)}
+.dot.off{background:var(--croute)}
+
+.shell{display:grid;grid-template-columns:220px 1fr;min-height:0}
+.nav{background:var(--pate);border-inline-end:1px solid var(--trait);padding:12px;display:flex;flex-direction:column;gap:4px}
+.nav button{display:flex;align-items:center;gap:12px;border:0;background:transparent;text-align:start;
+  padding:12px 14px;border-radius:10px;cursor:pointer;min-height:48px;color:var(--encre-2);font-weight:600}
+.nav button svg{width:22px;height:22px;flex:none}
+.nav button:hover{background:var(--farine)}
+.nav button[aria-current="page"]{background:var(--four);color:#fff}
+main{padding:24px;max-width:1100px;width:100%;margin-inline:auto}
+h1{font-size:1.6rem;margin:0 0 4px}
+.sub{color:var(--encre-2);margin:0 0 24px}
+h2{font-size:1.1rem;margin:28px 0 12px}
+
+/* Familles */
+.fam{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.card{background:var(--pate);border:1px solid var(--trait);border-radius:var(--r);padding:18px}
+.fam .card{border-inline-start:6px solid var(--four);display:flex;flex-direction:column;gap:6px}
+.fam .card[data-k="negoce"]{border-inline-start-color:var(--croute)}
+.fam .card h3{margin:0;font-size:1.05rem}
+.fam .card .n{font-size:2rem;font-weight:700;line-height:1}
+.fam .card small{color:var(--encre-2)}
+.tag{display:inline-block;background:var(--farine);border-radius:6px;padding:2px 8px;font-size:.82rem;color:var(--encre-2);margin-inline-end:6px}
+
+/* Feuille de route */
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.steps li{display:flex;gap:12px;align-items:flex-start;background:var(--pate);border:1px solid var(--trait);border-radius:12px;padding:12px 14px}
+.steps .b{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:.85rem;font-weight:700;
+  background:var(--farine);color:var(--encre-2);border:1px solid var(--trait)}
+.steps li.done .b{background:var(--ok);color:#fff;border-color:var(--ok)}
+.steps li.now{border-color:var(--four);box-shadow:inset 0 0 0 1px var(--four)}
+.steps li.now .b{background:var(--four);color:#fff;border-color:var(--four)}
+.steps strong{display:block}
+.steps span{color:var(--encre-2);font-size:.93rem}
+
+/* États vides / réglages */
+.empty{text-align:center;padding:48px 20px;border:2px dashed var(--trait);border-radius:var(--r);background:var(--pate)}
+.empty p{color:var(--encre-2);margin:6px auto 18px;max-width:46ch}
+.btn{border:0;background:var(--four);color:#fff;border-radius:10px;padding:12px 20px;min-height:48px;font-weight:700;cursor:pointer}
+.btn[disabled]{background:var(--trait);color:var(--encre-2);cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.field{display:grid;gap:6px;margin-bottom:16px}
+.field label{font-weight:600}
+.field select{padding:12px;border:1px solid var(--trait);border-radius:10px;background:var(--pate);min-height:48px;max-width:360px}
+table{border-collapse:collapse;width:100%;background:var(--pate);border-radius:var(--r);overflow:hidden;border:1px solid var(--trait)}
+th,td{padding:10px 14px;text-align:start;border-bottom:1px solid var(--trait)}
+th{background:var(--farine);font-size:.92rem}
+.yes{color:var(--ok);font-weight:700}.no{color:var(--off)}
+.scroll{overflow-x:auto}
+
+/* Mobile : navigation en bas */
+@media (max-width:760px){
+  .shell{grid-template-columns:1fr}
+  .nav{position:fixed;inset-inline:0;bottom:0;z-index:10;flex-direction:row;justify-content:space-around;
+    border-inline-end:0;border-top:1px solid var(--trait);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
+  .nav button{flex-direction:column;gap:2px;font-size:.74rem;padding:6px 4px;min-height:56px;flex:1;justify-content:center;align-items:center;text-align:center}
+  main{padding:16px 16px 96px}
+  .chip .lbl{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><img src="logo.png" alt="La Pâtisserie"><span>BOULPAT MASTER</span></div>
+    <span class="chip" id="net" role="status"><span class="dot"></span><span class="lbl" id="netLbl"></span></span>
+    <label class="chip"><span class="lbl" id="roleLbl"></span>
+      <select id="role" aria-label="Rôle"></select></label>
+    <button class="chip" id="langBtn" aria-label="Langue / اللغة"></button>
+  </header>
+  <div class="shell">
+    <nav class="nav" id="nav" aria-label="Navigation"></nav>
+    <main id="view" tabindex="-1"></main>
+  </div>
+</div>
+
+<script>
+/* ============ BOULPAT MASTER - Étape 1 : socle ============ */
+
+/* ---- Modèle de données (fixé dès l'étape 1, utilisé aux étapes suivantes) ---- */
+const FAMILIES = [
+  { id:'boul_fab',  key:'fab',    gabarit:'recette' },
+  { id:'boul_neg',  key:'negoce', gabarit:'negoce'  },   // DLC / prix / fournisseur / étiquetage, sans fabrication
+  { id:'viennois',  key:'vienn',  gabarit:'recette' },
+  { id:'pat_fine',  key:'pfine',  gabarit:'recette' },
+  { id:'pat_maroc', key:'pmaroc', gabarit:'recette' }
+];
+const ROLES = {
+  chef:    { fiches:'rw', of:'rw', delete:true,  import:true,  cout:true  },
+  equipe:  { fiches:'r',  of:'rw', delete:false, import:false, cout:false },
+  moniteur:{ fiches:'r',  of:'r',  delete:false, import:false, cout:false }
+};
+const can = (action) => {
+  const p = ROLES[S.role];
+  if (action==='write')  return p.fiches==='rw';
+  if (action==='exec')   return p.of==='rw';
+  return !!p[action];
+};
+
+/* ---- Textes FR / AR ---- */
+const T = {
+  fr:{
+    home:'Accueil', fiches:'Fiches', fab:'Fabrication', terrain:'Terrain', set:'Réglages',
+    online:'En ligne', offline:'Hors ligne', role:'Rôle',
+    r_chef:'Chef BoulPat', r_equipe:'Chef d\'équipe / Boulanger / Pâtissier', r_moniteur:'Moniteur (lecture seule)',
+    h_home:'Rayon Boulangerie-Pâtisserie', s_home:'Quatre familles, une seule source de recettes.',
+    fam_fab:'Boulangerie fabriquée', fam_negoce:'Boulangerie négoce', fam_vienn:'Viennoiserie',
+    fam_pfine:'Pâtisserie fine', fam_pmaroc:'Pâtisserie marocaine',
+    d_fab:'Pain blanc, complet, céréales, pains spéciaux', d_negoce:'Achat-revente : DLC, prix, fournisseur, étiquetage',
+    d_vienn:'Croissant, pain choc…', d_pfine:'Éclairs, millefeuille, tartes', d_pmaroc:'Cornes de gazelle, chebakia, fekkas, briouates',
+    fiches_n:'fiches', pat:'Pâtisserie', road:'Feuille de route',
+    h_fiches:'Fiches techniques', s_fiches:'Recettes standard, modifiables, rattachées à leur fichier source.',
+    e_fiches:'Aucune fiche pour le moment', p_fiches:'La création des fiches arrive à l\'étape 2.',
+    new_fiche:'Créer une fiche',
+    h_fab:'Fabrication du jour', s_fab:'Commande du chef → Ordre de Fabrication et besoins globaux.',
+    e_fab:'Aucun ordre de fabrication', p_fab:'Il faut d\'abord des fiches techniques. Le générateur d\'OF arrive à l\'étape 3.',
+    h_terrain:'Mode terrain', s_terrain:'Gros boutons, plein écran, minuteur, étapes à cocher.',
+    e_terrain:'Rien à exécuter pour le moment', p_terrain:'Le mode terrain s\'active avec les ordres de fabrication (étape 4).',
+    h_set:'Réglages', s_set:'Langue, rôle et droits d\'accès.',
+    lang:'Langue', rights:'Droits par rôle',
+    c_fiches:'Fiches', c_of:'Ordres de fabrication', c_del:'Supprimer', c_imp:'Importer', c_cout:'Voir les coûts',
+    rw:'Lecture + écriture', r:'Lecture', exec:'Exécution', 
+    st1:'Socle : PWA, FR/AR, rôles, familles', st2:'Fiches techniques : création, calculs, allergènes, duplication',
+    st3:'Fabrication : saisie des commandes, OF, besoins globaux', st4:'Mode terrain : minuteur, étapes, plein écran',
+    st5:'Import du fichier source, export PDF, QR code', st6:'Sauvegarde cloud (Supabase) et synchronisation',
+    now:'En cours'
+  },
+  ar:{
+    home:'الرئيسية', fiches:'البطاقات', fab:'الإنتاج', terrain:'الورشة', set:'الإعدادات',
+    online:'متصل', offline:'غير متصل', role:'الدور',
+    r_chef:'رئيس المخبزة والحلويات', r_equipe:'رئيس فريق / خباز / حلواني', r_moniteur:'المراقب (قراءة فقط)',
+    h_home:'قسم المخبزة والحلويات', s_home:'أربع عائلات، ومصدر واحد للوصفات.',
+    fam_fab:'مخبزة مُصنَّعة', fam_negoce:'مخبزة تجارية', fam_vienn:'فيينوزري',
+    fam_pfine:'حلويات راقية', fam_pmaroc:'حلويات مغربية',
+    d_fab:'خبز أبيض، كامل، حبوب، خبز خاص', d_negoce:'شراء وإعادة بيع: تاريخ الصلاحية، السعر، المورد، الملصق',
+    d_vienn:'كرواسون، بان شوك…', d_pfine:'إكلير، ميلفاي، تارت', d_pmaroc:'كعب الغزال، الشباكية، الفقاص، البريوات',
+    fiches_n:'بطاقات', pat:'الحلويات', road:'خارطة الطريق',
+    h_fiches:'البطاقات التقنية', s_fiches:'وصفات معيارية قابلة للتعديل ومرتبطة بملفها الأصلي.',
+    e_fiches:'لا توجد بطاقات حاليًا', p_fiches:'إنشاء البطاقات يأتي في المرحلة 2.',
+    new_fiche:'إنشاء بطاقة',
+    h_fab:'إنتاج اليوم', s_fab:'طلب الرئيس ← أمر التصنيع والاحتياجات الإجمالية.',
+    e_fab:'لا توجد أوامر تصنيع', p_fab:'نحتاج أولًا إلى بطاقات تقنية. مولّد أوامر التصنيع يأتي في المرحلة 3.',
+    h_terrain:'وضع الورشة', s_terrain:'أزرار كبيرة، ملء الشاشة، مؤقت، خطوات قابلة للتحديد.',
+    e_terrain:'لا شيء للتنفيذ حاليًا', p_terrain:'يُفعَّل وضع الورشة مع أوامر التصنيع (المرحلة 4).',
+    h_set:'الإعدادات', s_set:'اللغة والدور وصلاحيات الوصول.',
+    lang:'اللغة', rights:'الصلاحيات حسب الدور',
+    c_fiches:'البطاقات', c_of:'أوامر التصنيع', c_del:'الحذف', c_imp:'الاستيراد', c_cout:'عرض التكاليف',
+    rw:'قراءة + كتابة', r:'قراءة', exec:'تنفيذ',
+    st1:'الأساس: PWA، عربي/فرنسي، الأدوار، العائلات', st2:'البطاقات التقنية: إنشاء، حسابات، مسببات الحساسية، نسخ',
+    st3:'الإنتاج: إدخال الطلبات، أمر التصنيع، الاحتياجات الإجمالية', st4:'وضع الورشة: مؤقت، خطوات، ملء الشاشة',
+    st5:'استيراد الملف الأصلي، تصدير PDF، رمز QR', st6:'النسخ الاحتياطي السحابي (Supabase) والمزامنة',
+    now:'جارٍ'
+  }
+};
+
+/* ---- État persistant ---- */
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem('bpm.'+k); return v===null? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem('bpm.'+k, JSON.stringify(v)); }catch(e){} }
+};
+const S = {
+  lang: store.get('lang','fr'),
+  role: store.get('role','chef'),
+  view: 'home',
+  fiches: store.get('fiches', [])
+};
+const t = k => (T[S.lang][k] ?? T.fr[k] ?? k);
+
+/* ---- Icônes ---- */
+const IC = {
+  home:'<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+  fiches:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/>',
+  fab:'<path d="M4 20V10l5 3V9l5 3V6l6 3v11z"/>',
+  terrain:'<rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="12" r="3.5"/><path d="M12 10v2l1.5 1"/>',
+  set:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>'
+};
+const icon = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
+
+/* ---- Vues ---- */
+const VIEWS = {
+  home(){
+    const count = id => S.fiches.filter(f=>f.famille===id).length;
+    const fam = FAMILIES.map(f=>`
+      <article class="card" data-k="${f.key}">
+        <h3>${t('fam_'+f.key)}</h3>
+        <div class="n">${count(f.id)}</div><small>${t('fiches_n')}</small>
+        <span>${t('d_'+f.key)}</span>
+      </article>`).join('');
+    const steps = [1,2,3,4,5,6].map(n=>`
+      <li class="${n===1?'done':n===2?'now':''}"><span class="b">${n===1?'✓':n}</span>
+        <div><strong>${t('st'+n)}</strong>${n===2?`<span>${t('now')}</span>`:''}</div></li>`).join('');
+    return `<h1>${t('h_home')}</h1><p class="sub">${t('s_home')}</p>
+      <div class="fam">${fam}</div>
+      <h2>${t('road')}</h2><ol class="steps">${steps}</ol>`;
+  },
+  fiches(){
+    return `<h1>${t('h_fiches')}</h1><p class="sub">${t('s_fiches')}</p>
+      <div class="empty"><strong>${t('e_fiches')}</strong><p>${t('p_fiches')}</p>
+      <button class="btn" disabled ${can('write')?'':'hidden'}>${t('new_fiche')}</button></div>`;
+  },
+  fab(){
+    return `<h1>${t('h_fab')}</h1><p class="sub">${t('s_fab')}</p>
+      <div class="empty"><strong>${t('e_fab')}</strong><p>${t('p_fab')}</p></div>`;
+  },
+  terrain(){
+    return `<h1>${t('h_terrain')}</h1><p class="sub">${t('s_terrain')}</p>
+      <div class="empty"><strong>${t('e_terrain')}</strong><p>${t('p_terrain')}</p></div>`;
+  },
+  set(){
+    const mark = v => v ? `<span class="yes">✓</span>` : `<span class="no">—</span>`;
+    const rows = Object.keys(ROLES).map(r=>{
+      const p = ROLES[r];
+      return `<tr><td>${t('r_'+r)}</td><td>${t(p.fiches)}</td><td>${p.of==='rw'?t('exec'):t('r')}</td>
+        <td>${mark(p.delete)}</td><td>${mark(p.import)}</td><td>${mark(p.cout)}</td></tr>`;
+    }).join('');
+    return `<h1>${t('h_set')}</h1><p class="sub">${t('s_set')}</p>
+      <div class="field"><label for="lang2">${t('lang')}</label>
+        <select id="lang2"><option value="fr" ${S.lang==='fr'?'selected':''}>Français</option>
+        <option value="ar" ${S.lang==='ar'?'selected':''}>العربية</option></select></div>
+      <h2>${t('rights')}</h2>
+      <div class="scroll"><table><thead><tr><th>${t('role')}</th><th>${t('c_fiches')}</th><th>${t('c_of')}</th>
+        <th>${t('c_del')}</th><th>${t('c_imp')}</th><th>${t('c_cout')}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+};
+const NAV = ['home','fiches','fab','terrain','set'];
+
+/* ---- Rendu ---- */
+function render(){
+  document.documentElement.lang = S.lang;
+  document.documentElement.dir  = S.lang==='ar' ? 'rtl' : 'ltr';
+  document.getElementById('nav').innerHTML = NAV.map(k=>
+    `<button data-v="${k}" ${S.view===k?'aria-current="page"':''}>${icon(k)}<span>${t(k)}</span></button>`).join('');
+  document.getElementById('view').innerHTML = VIEWS[S.view]();
+  const roleSel = document.getElementById('role');
+  roleSel.innerHTML = Object.keys(ROLES).map(r=>`<option value="${r}" ${S.role===r?'selected':''}>${t('r_'+r)}</option>`).join('');
+  document.getElementById('roleLbl').textContent = t('role');
+  document.getElementById('langBtn').textContent = S.lang==='fr' ? 'العربية' : 'Français';
+  netStatus();
+  const l2 = document.getElementById('lang2'); if(l2) l2.onchange = e => setLang(e.target.value);
+}
+function setLang(l){ S.lang = l; store.set('lang', l); render(); }
+function go(v){ S.view = v; location.hash = v; render(); document.getElementById('view').focus({preventScroll:true}); window.scrollTo(0,0); }
+function netStatus(){
+  const on = navigator.onLine;
+  document.querySelector('#net .dot').classList.toggle('off', !on);
+  document.getElementById('netLbl').textContent = on ? t('online') : t('offline');
+}
+
+document.getElementById('nav').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if(b) go(b.dataset.v); });
+document.getElementById('langBtn').addEventListener('click', () => setLang(S.lang==='fr' ? 'ar' : 'fr'));
+document.getElementById('role').addEventListener('change', e => { S.role = e.target.value; store.set('role', S.role); render(); });
+window.addEventListener('online', netStatus); window.addEventListener('offline', netStatus);
+window.addEventListener('hashchange', () => { const v = location.hash.slice(1); if(NAV.includes(v) && v!==S.view){ S.view = v; render(); } });
+
+const h = location.hash.slice(1); if(NAV.includes(h)) S.view = h;
+render();
+if('serviceWorker' in navigator){ window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+</script>
+</body>
+</html>
