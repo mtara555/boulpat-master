@@ -10,11 +10,11 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 :root{
-  --four:#0E5A57;      /* vert zellige : actions, navigation */
+  --four:#0E5A57;
   --four-ink:#093D3B;
-  --farine:#F2F4F1;    /* fond */
-  --pate:#FFFFFF;      /* surfaces */
-  --croute:#E0A526;    /* accent : état actif, alertes douces */
+  --farine:#F2F4F1;
+  --pate:#FFFFFF;
+  --croute:#E0A526;
   --encre:#1D2A2E;
   --encre-2:#5B6B70;
   --trait:#D6DCD8;
@@ -148,7 +148,7 @@ th{background:var(--farine);font-size:.92rem}
 @media (max-width:600px){
   .cmd-ligne{grid-template-columns:1fr 90px 44px;grid-template-areas:"n q x" "u u u"}
   .cmd-nom{grid-area:n}.cmd-q{grid-area:q}.cmd-u{grid-area:u}.cmd-ligne .x{grid-area:x}
-}  
+}
 .big{width:140px;height:140px;object-fit:cover;border-radius:12px}.thumb{width:64px;height:64px;object-fit:cover;border-radius:10px}
 .proc{padding-inline-start:22px;margin:0 0 8px}.proc li{margin-bottom:8px}
 #toast{position:fixed;inset-inline:16px;bottom:calc(84px + env(safe-area-inset-bottom));max-width:420px;margin-inline:auto;background:var(--encre);color:#fff;
@@ -184,7 +184,7 @@ th{background:var(--farine);font-size:.92rem}
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
-/* ============ BOULPAT MASTER - Étape 2 : fiches techniques ============ */
+/* ============ BOULPAT MASTER - Étape 5 : Fabrication + OF ============ */
 /*PURE-START*/
 const UNITS = ['g','kg','ml','L'];
 const TO_G  = { g:1, kg:1000, ml:1, L:1000 };
@@ -212,6 +212,10 @@ const norm = s => String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[
 const num  = v => { const n = parseFloat(String(v==null?'':v).replace(',','.')); return isFinite(n) ? n : 0; };
 const esc  = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid  = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+
+/* 🔧 CORRECTION BUG 3 : hhmm et duree par défaut (avant chargement du moteur OF) */
+let hhmm  = mn => { const t = Math.round(mn); return String(Math.floor(t/60)%24).padStart(2,'0') + ':' + String(t%60).padStart(2,'0'); };
+let duree = m => { const t = Math.round(m); return t<60 ? t+' min' : Math.floor(t/60)+'h'+String(t%60).padStart(2,'0'); };
 
 function detect(text){
   let t = norm(text);
@@ -277,9 +281,9 @@ const T = {
   e_fiches:'Aucune fiche pour le moment', p_fiches:"Créez votre première fiche, ou chargez deux recettes d'exemple pour tester.",
   new_fiche:'Créer une fiche', seed:"Charger 2 recettes d'exemple",
   h_fab:'Fabrication du jour', s_fab:'Commande du chef → Ordre de Fabrication et besoins globaux.',
-  e_fab:'Aucun ordre de fabrication', p_fab:"Le générateur d'OF arrive à l'étape 3.",
+  e_fab:'Aucun ordre de fabrication', p_fab:"Saisissez une commande pour générer l'OF.",
   h_terrain:'Mode terrain', s_terrain:'Gros boutons, plein écran, minuteur, étapes à cocher.',
-  e_terrain:'Rien à exécuter pour le moment', p_terrain:"Le mode terrain s'active avec les ordres de fabrication (étape 4).",
+  e_terrain:'Rien à exécuter pour le moment', p_terrain:"Le mode terrain s'active avec les ordres de fabrication.",
   h_set:'Réglages', s_set:"Langue, rôle et droits d'accès.", lang:'Langue', rights:'Droits par rôle',
   c_fiches:'Fiches', c_of:'Ordres de fabrication', c_del:'Supprimer', c_imp:'Importer', c_cout:'Voir les coûts',
   rw:'Lecture + écriture', r:'Lecture', exec:'Exécution',
@@ -319,9 +323,9 @@ const T = {
   e_fiches:'لا توجد بطاقات حاليًا', p_fiches:'أنشئ أول بطاقة، أو حمّل وصفتين نموذجيتين للتجربة.',
   new_fiche:'إنشاء بطاقة', seed:'تحميل وصفتين نموذجيتين',
   h_fab:'إنتاج اليوم', s_fab:'طلب الرئيس ← أمر التصنيع والاحتياجات الإجمالية.',
-  e_fab:'لا توجد أوامر تصنيع', p_fab:'مولّد أوامر التصنيع يأتي في المرحلة 3.',
+  e_fab:'لا توجد أوامر تصنيع', p_fab:'أدخل طلبًا لتوليد أمر التصنيع.',
   h_terrain:'وضع الورشة', s_terrain:'أزرار كبيرة، ملء الشاشة، مؤقت، خطوات قابلة للتحديد.',
-  e_terrain:'لا شيء للتنفيذ حاليًا', p_terrain:'يُفعَّل وضع الورشة مع أوامر التصنيع (المرحلة 4).',
+  e_terrain:'لا شيء للتنفيذ حاليًا', p_terrain:'يُفعَّل وضع الورشة مع أوامر التصنيع.',
   h_set:'الإعدادات', s_set:'اللغة والدور وصلاحيات الوصول.', lang:'اللغة', rights:'الصلاحيات حسب الدور',
   c_fiches:'البطاقات', c_of:'أوامر التصنيع', c_del:'الحذف', c_imp:'الاستيراد', c_cout:'عرض التكاليف',
   rw:'قراءة + كتابة', r:'قراءة', exec:'تنفيذ',
@@ -469,6 +473,7 @@ function listHTML(){
   if(!arr.length) return `<div class="empty"><p>${t('no_result')}</p></div>`;
   return `<div class="grid">${arr.map(cardHTML).join('')}</div>`;
 }
+
 /* ---- Vue OF ---- */
 function renderOF(of){
   const lignes = of.lignes.map(l => `<tr>
@@ -514,7 +519,7 @@ function renderOF(of){
     </div>
   </section>`;
 }
-  
+
 function listPage(){
   return `<h1>${t('h_fiches')}</h1><p class="sub">${t('s_fiches')}</p>
     <div class="toolbar">
@@ -685,8 +690,8 @@ const VIEWS = {
     const count = id => S.fiches.filter(f => f.famille===id).length;
     const fam = FAMILIES.map(f => `<button class="card famc" data-k="${f.key}" data-fam="${f.id}">
       <h3>${t('fam_'+f.key)}</h3><span class="n">${count(f.id)}</span><small>${t('fiches_n')}</small><span>${t('d_'+f.key)}</span></button>`).join('');
-    const steps = [1,2,3,4,5,6].map(n => `<li class="${n<=2?'done':n===3?'now':''}"><span class="b">${n<=2?'✓':n}</span>
-      <div><strong>${t('st'+n)}</strong>${n===3?`<span>${t('now')}</span>`:''}</div></li>`).join('');
+    const steps = [1,2,3,4,5,6].map(n => `<li class="${n<=3?'done':n===4?'now':''}"><span class="b">${n<=3?'✓':n}</span>
+      <div><strong>${t('st'+n)}</strong>${n===4?`<span>${t('now')}</span>`:''}</div></li>`).join('');
     return `<h1>${t('h_home')}</h1><p class="sub">${t('s_home')}</p><div class="fam">${fam}</div>
       <h2>${t('road')}</h2><ol class="steps">${steps}</ol>`;
   },
@@ -699,7 +704,7 @@ const VIEWS = {
     }
     return listPage();
   },
-    fab(){
+  fab(){
     const cmds = S.commandes || [];
     const eligible = S.fiches.filter(f => f.famille !== 'boul_neg');
     const cmdsHTML = cmds.length
@@ -820,14 +825,14 @@ function focusLast(sel){ const els = document.querySelectorAll(sel); if(els.leng
 $('#view').addEventListener('click', e => {
   const fam = e.target.closest('[data-fam]');
   if(fam){ S.ffam = fam.dataset.fam; S.q = ''; S.fst = ''; go('fiches'); return; }
-  const b = e.target.closest('[data-act]'); if(!b) return;
-    // Cas spéciaux : suppression d'une commande (bouton ×)
+  /* 🔧 CORRECTION BUG 2 : del-cmd AVANT data-act */
   const delCmd = e.target.closest('[data-del-cmd]');
   if(delCmd){
     S.commandes = (S.commandes || []).filter(c => c.ficheId !== delCmd.dataset.delCmd);
     store.set('commandes', S.commandes);
     render(); return;
   }
+  const b = e.target.closest('[data-act]'); if(!b) return;
   const id = b.dataset.id, k = +b.dataset.idx, d = S.draft;
   switch(b.dataset.act){
     case 'open': S.fv = {mode:'view', id}; render(); window.scrollTo(0,0); break;
@@ -847,7 +852,7 @@ $('#view').addEventListener('click', e => {
     case 'down-step': if(k<d.etapes.length-1){ [d.etapes[k+1], d.etapes[k]] = [d.etapes[k], d.etapes[k+1]]; S.dirty = true; render(); } break;
     case 'allerg': toggleAllerg(id); break;
     case 'photo-del': d.photo = ''; S.dirty = true; render(); break;
-        case 'add-cmd': {
+    case 'add-cmd': {
       const sel = document.getElementById('addProd');
       if(!sel) break;
       const ficheId = sel.value;
@@ -862,8 +867,8 @@ $('#view').addEventListener('click', e => {
       if(!S.commandes || !S.commandes.length){ toast('Ajoutez au moins une commande'); break; }
       import('./of-engine.js').then(mod => {
         S.ofCourant = mod.genererOF(S.commandes, S.fiches, { debutMin: 9*60 });
-        window._hhmm = mod.hhmm;
-        window._duree = mod.duree;
+        hhmm  = mod.hhmm;
+        duree = mod.duree;
         render();
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }).catch(err => {
@@ -884,11 +889,14 @@ $('#view').addEventListener('click', e => {
     }
     case 'clear-of': {
       S.ofCourant = null; render(); break;
-    }  
+    }
   }
 });
+
+/* 🔧 CORRECTION BUG 1 : el déclaré en haut de onField */
 function onField(e){
-    // Commandes : quantité ou unité modifiée
+  const el = e.target, d = S.draft;
+  // Commandes : quantité ou unité modifiée
   if(el.dataset.cmd !== undefined){
     const c = (S.commandes || []).find(x => x.ficheId === el.dataset.cmd);
     if(c){ c.quantite = Number(el.value) || 0; store.set('commandes', S.commandes); }
@@ -899,7 +907,6 @@ function onField(e){
     if(c){ c.unite = el.value; store.set('commandes', S.commandes); }
     return;
   }
-  const el = e.target, d = S.draft;
   if(el.id==='q'){ S.q = el.value; $('#list').innerHTML = listHTML(); return; }
   if(el.id==='ffam'){ S.ffam = el.value; $('#list').innerHTML = listHTML(); return; }
   if(el.id==='fst'){ S.fst = el.value; $('#list').innerHTML = listHTML(); return; }
@@ -923,7 +930,8 @@ window.addEventListener('beforeunload', e => { if(S.dirty){ e.preventDefault(); 
 const h0 = location.hash.slice(1); if(NAV.includes(h0)) S.view = h0;
 render();
 if('serviceWorker' in navigator){ window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {})); }
-  /* ============ ÉTAPE 4 : Connexion Firebase ============ */
+
+/* ============ ÉTAPE 4 : Connexion Firebase ============ */
 (async () => {
   let fb;
   try {
