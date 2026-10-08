@@ -1,5 +1,5 @@
 // BOULPAT MASTER - Service worker (offline-first pour le shell applicatif)
-const CACHE = 'boulpat-shell-v4';
+const CACHE = 'boulpat-shell-v5';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './logo.png'];
 
 self.addEventListener('install', e => {
