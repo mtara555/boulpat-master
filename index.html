@@ -141,6 +141,14 @@ th{background:var(--farine);font-size:.92rem}
 .kv div{background:var(--farine);border-radius:10px;padding:10px 12px}
 .kv dt{font-size:.85rem;color:var(--encre-2)}.kv dd{margin:2px 0 0;font-weight:700}
 .head{display:flex;gap:16px;align-items:center;flex-wrap:wrap}.head h1{margin:0}
+.cmd-ligne{display:grid;grid-template-columns:1fr 100px 130px 44px;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--trait)}
+.cmd-ligne:last-child{border-bottom:0}
+.cmd-nom{font-weight:600}
+.cmd-q,.cmd-u{padding:10px;border:1px solid var(--trait);border-radius:10px;font:inherit;background:var(--pate);min-height:44px}
+@media (max-width:600px){
+  .cmd-ligne{grid-template-columns:1fr 90px 44px;grid-template-areas:"n q x" "u u u"}
+  .cmd-nom{grid-area:n}.cmd-q{grid-area:q}.cmd-u{grid-area:u}.cmd-ligne .x{grid-area:x}
+}  
 .big{width:140px;height:140px;object-fit:cover;border-radius:12px}.thumb{width:64px;height:64px;object-fit:cover;border-radius:10px}
 .proc{padding-inline-start:22px;margin:0 0 8px}.proc li{margin-bottom:8px}
 #toast{position:fixed;inset-inline:16px;bottom:calc(84px + env(safe-area-inset-bottom));max-width:420px;margin-inline:auto;background:var(--encre);color:#fff;
@@ -362,6 +370,7 @@ const store = {
 const S = {
   lang: store.get('lang','fr'), role: store.get('role','chef'), view:'home',
   fiches: store.get('fiches',[]), fv:{mode:'list'}, draft:null, dirty:false,
+  commandes: store.get('commandes',[]), ofCourant: null,
   q:'', ffam:'', fst:''
 };
 const t = k => (T[S.lang][k] != null ? T[S.lang][k] : (T.fr[k] != null ? T.fr[k] : k));
@@ -460,6 +469,52 @@ function listHTML(){
   if(!arr.length) return `<div class="empty"><p>${t('no_result')}</p></div>`;
   return `<div class="grid">${arr.map(cardHTML).join('')}</div>`;
 }
+/* ---- Vue OF ---- */
+function renderOF(of){
+  const lignes = of.lignes.map(l => `<tr>
+    <td><strong>${hhmm(l.heureLancement)}</strong></td>
+    <td>${esc(l.nomFr)} <small class="muted">${esc(l.code)}</small></td>
+    <td>${l.pieces || '—'} pcs / ${fmt(l.pate_g/1000,1)} kg</td>
+    <td>${l.tempsPousse} min</td>
+    <td>${l.tFiche} min</td>
+  </tr>`).join('');
+
+  const besoins = of.besoinsGlobaux.map(b => `<tr>
+    <td>${esc(b.nom)}</td>
+    <td><strong>${fmt(b.qte, b.unite==='kg'?2:0)} ${b.unite}</strong></td>
+    <td>${money(b.cout)}</td>
+  </tr>`).join('');
+
+  return `<section class="card">
+    <h2>🎯 Ordre de Fabrication — ${esc(of.id)}</h2>
+    <dl class="kv">
+      <div><dt>Coût matière total</dt><dd>${money(of.coutTotal)}</dd></div>
+      <div><dt>Temps total estimé</dt><dd>${duree(of.tempsTotal)}</dd></div>
+      <div><dt>Fin estimée</dt><dd>${hhmm(of.finEstimee)}</dd></div>
+      <div><dt>Nb produits différents</dt><dd>${of.lignes.length}</dd></div>
+    </dl>
+  </section>
+
+  <section class="card">
+    <h2>🔔 Ordre de lancement</h2>
+    <div class="scroll"><table><thead><tr>
+      <th>Heure</th><th>Produit</th><th>Quantité</th><th>Pousse</th><th>Fabric.</th>
+    </tr></thead><tbody>${lignes}</tbody></table></div>
+  </section>
+
+  <section class="card">
+    <h2>🧾 Liste de courses labo — Besoins globaux</h2>
+    <div class="scroll"><table><thead><tr>
+      <th>Ingrédient</th><th>Quantité totale</th><th>Coût</th>
+    </tr></thead><tbody>${besoins}</tbody></table></div>
+    <div class="row" style="margin-top:16px">
+      <button class="btn" data-act="print">🖨 Imprimer l'OF</button>
+      <button class="btn ghost" data-act="save-of">💾 Enregistrer dans Firebase</button>
+      <button class="btn ghost" data-act="clear-of">🗑 Effacer l'OF</button>
+    </div>
+  </section>`;
+}
+  
 function listPage(){
   return `<h1>${t('h_fiches')}</h1><p class="sub">${t('s_fiches')}</p>
     <div class="toolbar">
@@ -644,7 +699,44 @@ const VIEWS = {
     }
     return listPage();
   },
-  fab(){ return `<h1>${t('h_fab')}</h1><p class="sub">${t('s_fab')}</p><div class="empty"><strong>${t('e_fab')}</strong><p>${t('p_fab')}</p></div>`; },
+    fab(){
+    const cmds = S.commandes || [];
+    const eligible = S.fiches.filter(f => f.famille !== 'boul_neg');
+    const cmdsHTML = cmds.length
+      ? cmds.map(c => {
+          const f = S.fiches.find(x => x.id === c.ficheId);
+          if(!f) return '';
+          return `<div class="cmd-ligne" data-id="${f.id}">
+            <span class="cmd-nom">${esc(fname(f))}</span>
+            <input type="number" class="cmd-q" data-cmd="${f.id}" value="${c.quantite}" min="0" step="1">
+            <select class="cmd-u" data-cmd-u="${f.id}">
+              <option value="piece" ${c.unite==='piece'?'selected':''}>pièces</option>
+              <option value="kg" ${c.unite==='kg'?'selected':''}>kg pâte</option>
+              <option value="plaque" ${c.unite==='plaque'?'selected':''}>plaques</option>
+            </select>
+            <button class="x" data-del-cmd="${f.id}" aria-label="Retirer">×</button>
+          </div>`;
+        }).join('')
+      : '<p class="muted">Aucune commande — ajoutez un produit ci-dessous.</p>';
+
+    const ofHTML = S.ofCourant ? renderOF(S.ofCourant) : '';
+
+    return `<h1>${t('h_fab')}</h1><p class="sub">${t('s_fab')}</p>
+
+    <section class="card">
+      <h2>📋 Commandes du chef</h2>
+      <div id="cmds">${cmdsHTML}</div>
+      ${eligible.length ? `<div class="row" style="margin-top:14px">
+        <select id="addProd" style="flex:1 1 260px">
+          ${eligible.map(f => `<option value="${f.id}">${esc(fname(f))} — ${f.code}</option>`).join('')}
+        </select>
+        <button class="btn ghost" data-act="add-cmd">+ Ajouter</button>
+        ${cmds.length ? `<button class="btn" data-act="gen-of">⚙ Calculer l'OF du jour</button>` : ''}
+      </div>` : `<p class="muted" style="margin-top:14px">Créez d'abord des fiches techniques (familles ≠ Négoce).</p>`}
+    </section>
+
+    ${ofHTML}`;
+  },
   terrain(){ return `<h1>${t('h_terrain')}</h1><p class="sub">${t('s_terrain')}</p><div class="empty"><strong>${t('e_terrain')}</strong><p>${t('p_terrain')}</p></div>`; },
   set(){
     const mark = v => v ? '<span class="yes">✓</span>' : '<span class="no">—</span>';
@@ -729,6 +821,13 @@ $('#view').addEventListener('click', e => {
   const fam = e.target.closest('[data-fam]');
   if(fam){ S.ffam = fam.dataset.fam; S.q = ''; S.fst = ''; go('fiches'); return; }
   const b = e.target.closest('[data-act]'); if(!b) return;
+    // Cas spéciaux : suppression d'une commande (bouton ×)
+  const delCmd = e.target.closest('[data-del-cmd]');
+  if(delCmd){
+    S.commandes = (S.commandes || []).filter(c => c.ficheId !== delCmd.dataset.delCmd);
+    store.set('commandes', S.commandes);
+    render(); return;
+  }
   const id = b.dataset.id, k = +b.dataset.idx, d = S.draft;
   switch(b.dataset.act){
     case 'open': S.fv = {mode:'view', id}; render(); window.scrollTo(0,0); break;
@@ -748,9 +847,58 @@ $('#view').addEventListener('click', e => {
     case 'down-step': if(k<d.etapes.length-1){ [d.etapes[k+1], d.etapes[k]] = [d.etapes[k], d.etapes[k+1]]; S.dirty = true; render(); } break;
     case 'allerg': toggleAllerg(id); break;
     case 'photo-del': d.photo = ''; S.dirty = true; render(); break;
+        case 'add-cmd': {
+      const sel = document.getElementById('addProd');
+      if(!sel) break;
+      const ficheId = sel.value;
+      S.commandes = S.commandes || [];
+      if(!S.commandes.find(c => c.ficheId === ficheId)){
+        S.commandes.push({ ficheId, quantite: 10, unite: 'piece' });
+        store.set('commandes', S.commandes);
+      }
+      render(); break;
+    }
+    case 'gen-of': {
+      if(!S.commandes || !S.commandes.length){ toast('Ajoutez au moins une commande'); break; }
+      import('./of-engine.js').then(mod => {
+        S.ofCourant = mod.genererOF(S.commandes, S.fiches, { debutMin: 9*60 });
+        window._hhmm = mod.hhmm;
+        window._duree = mod.duree;
+        render();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }).catch(err => {
+        console.error('[OF] Erreur chargement moteur', err);
+        toast('Erreur : moteur OF indisponible');
+      });
+      break;
+    }
+    case 'save-of': {
+      if(!S.ofCourant){ break; }
+      import('./firebase-sync.js').then(async fb => {
+        try {
+          await fb.saveOF(S.ofCourant);
+          toast('OF enregistré dans Firebase ☁️');
+        } catch(e){ console.error(e); toast('Erreur enregistrement OF'); }
+      }).catch(() => toast('Firebase non disponible'));
+      break;
+    }
+    case 'clear-of': {
+      S.ofCourant = null; render(); break;
+    }  
   }
 });
 function onField(e){
+    // Commandes : quantité ou unité modifiée
+  if(el.dataset.cmd !== undefined){
+    const c = (S.commandes || []).find(x => x.ficheId === el.dataset.cmd);
+    if(c){ c.quantite = Number(el.value) || 0; store.set('commandes', S.commandes); }
+    return;
+  }
+  if(el.dataset.cmdU !== undefined){
+    const c = (S.commandes || []).find(x => x.ficheId === el.dataset.cmdU);
+    if(c){ c.unite = el.value; store.set('commandes', S.commandes); }
+    return;
+  }
   const el = e.target, d = S.draft;
   if(el.id==='q'){ S.q = el.value; $('#list').innerHTML = listHTML(); return; }
   if(el.id==='ffam'){ S.ffam = el.value; $('#list').innerHTML = listHTML(); return; }
