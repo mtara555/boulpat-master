@@ -201,6 +201,851 @@ th{background:var(--farine);font-size:.92rem}
   .timer-display{font-size:2rem;min-width:130px}
 }
 @media print{ .terrain-noprint{display:none!important} }
-</style>
 
+/* ---- Connexion ---- */
+#auth{position:fixed;inset:0;z-index:100;background:var(--farine);display:grid;place-items:center;padding:20px;overflow:auto}
+#auth[hidden]{display:none}
+.auth-card{position:relative;width:100%;max-width:400px;background:var(--pate);border:1px solid var(--trait);border-radius:18px;padding:28px 24px;display:grid;gap:12px;text-align:center}
+.auth-card h1{font-size:1.4rem;margin:0}.auth-card h2{margin:6px 0 4px;font-size:1.1rem}
+.auth-logo{width:84px;height:84px;margin-inline:auto;border-radius:50%}
+.auth-lang{position:absolute;top:12px;inset-inline-end:12px;color:var(--four);border-color:var(--trait);min-height:36px;padding:4px 12px}
+.auth-card form{display:grid;gap:12px;text-align:start}
+.auth-card .fl input{font:inherit;padding:12px;border:1px solid var(--trait);border-radius:10px;min-height:48px;width:100%}
+.autherr{color:var(--off);font-weight:600;min-height:1.4em;margin:0}
+.linkb{background:none;border:0;color:var(--four);text-decoration:underline;cursor:pointer;padding:8px;min-height:44px}
+.uid{display:block;padding:10px;background:var(--farine);border-radius:10px;font-size:.85rem;word-break:break-all;user-select:all}
+.btn[disabled]{opacity:.6}
+/* ---- Impression ---- */
+@media print{
+  .top,.nav,.noprint,#toast,#auth{display:none!important}
+  body{background:#fff}.shell{display:block}main{padding:0;max-width:none}
+  .card{break-inside:avoid;border-color:#bbb}
+}
+</style>
 </head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><img src="logo.png" alt="La Pâtisserie"><span>BOULPAT MASTER</span></div>
+    <span class="chip" id="net" role="status"><span class="dot"></span><span class="lbl" id="netLbl"></span></span>
+    <label class="chip"><span class="lbl" id="roleLbl"></span>
+      <select id="role" aria-label="Rôle"></select></label>
+    <button class="chip" id="authBtn" type="button" hidden></button>
+    <button class="chip" id="langBtn" aria-label="Langue / اللغة"></button>
+  </header>
+  <div class="shell">
+    <nav class="nav" id="nav" aria-label="Navigation"></nav>
+    <main id="view" tabindex="-1"></main>
+  </div>
+</div>
+<div id="auth" role="dialog" aria-modal="true" aria-label="Connexion"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ============ BOULPAT MASTER ============ */
+/*PURE-START*/
+const UNITS = ['g','kg','ml','L'];
+const TO_G  = { g:1, kg:1000, ml:1, L:1000 };
+const STEP_TYPES = ['petrissage','pointage','faconnage','appret','cuisson','finitions','autre'];
+const PREFIX = { boul_fab:'BF', boul_neg:'BN', viennois:'VI', pat_fine:'PF', pat_maroc:'PM' };
+
+const ALLERGENS = [
+ {id:'gluten',   kw:['farine','ble','seigle','orge','avoine','semoule','epeautre','froment','gluten','chapelure','دقيق','قمح','شعير','سميد','نخالة']},
+ {id:'oeufs',    kw:['oeuf','œuf','jaune d','blanc d','ovo','بيض']},
+ {id:'lait',     kw:['lait','beurre','creme','fromage','yaourt','yogourt','lactose','mascarpone','ricotta','caseine','حليب','زبدة','كريمة','جبن','لبن']},
+ {id:'coque',    kw:['amande','noisette','noix','pistache','cajou','pecan','macadamia','praline','pralin','لوز','بندق','جوز','فستق','كاجو']},
+ {id:'arachide', kw:['arachide','cacahuete','فول سوداني','كاوكاو']},
+ {id:'sesame',   kw:['sesame','tahini','سمسم','جلجلان']},
+ {id:'soja',     kw:['soja','صوجا','صويا']},
+ {id:'poisson',  kw:['poisson','thon','saumon','سمك','تونة']},
+ {id:'crustaces',kw:['crevette','crabe','homard','langoustine','قمرون','جمبري']},
+ {id:'mollusques',kw:['moule','calmar','huitre','escargot','بلح البحر']},
+ {id:'celeri',   kw:['celeri','كرفس']},
+ {id:'moutarde', kw:['moutarde','خردل']},
+ {id:'lupin',    kw:['lupin','ترمس']},
+ {id:'sulfites', kw:['sulfite','metabisulfite','raisin sec','abricot sec','vin blanc','vin rouge','كبريتات']}
+];
+
+const norm = s => String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+const num  = v => { const n = parseFloat(String(v==null?'':v).replace(',','.')); return isFinite(n) ? n : 0; };
+const esc  = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid  = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+
+function detect(text){
+  let t = norm(text);
+  t = t.replace(/noix de muscade|noix de coco|beurre de cacao|lait de coco/g,' ')
+       .replace(/lait d['’]amande/g,' amande ');
+  const out = new Set();
+  ALLERGENS.forEach(a => a.kw.forEach(k => {
+    const nk = norm(k);
+    if(/[\u0600-\u06FF]/.test(nk)){ if(t.includes(nk)) out.add(a.id); }
+    else if(new RegExp('(^|[^a-z])' + nk.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).test(t)) out.add(a.id);
+  }));
+  return out;
+}
+const isNegoce = f => f.famille === 'boul_neg';
+function autoAllerg(f){
+  if(isNegoce(f)) return detect((f.nomFr||'') + ' ' + (f.nomAr||'') + ' ' + (f.composition||''));
+  return detect((f.ingredients||[]).map(i => i.nom).join(' , '));
+}
+function finalAllerg(f){
+  const s = autoAllerg(f), a = f.allerg || {add:[],rem:[]};
+  (a.add||[]).forEach(x => s.add(x));
+  (a.rem||[]).forEach(x => s.delete(x));
+  return s;
+}
+const lineCost = i => num(i.qte) * (TO_G[i.unite]||1) / 1000 * num(i.prix);
+
+function calc(f){
+  const r = { pate:0, cout:0, nb:0, perte:null, coutPiece:null, coutKg:null, pvSug:null, margeR:null };
+  const m = Math.min(Math.max(num(f.margeCible),0),99);
+  const pv = num(f.prixVente);
+  if(isNegoce(f)){
+    r.coutPiece = num(f.prixAchat) > 0 ? num(f.prixAchat) : null;
+  } else {
+    (f.ingredients||[]).forEach(i => { r.pate += num(i.qte)*(TO_G[i.unite]||1); r.cout += lineCost(i); });
+    const crue = num(f.pieceCrue), cuit = num(f.poidsCuit);
+    r.nb = crue > 0 ? Math.floor(r.pate / crue) : 0;
+    if(crue > 0 && cuit > 0) r.perte = (crue - cuit) / crue * 100;
+    r.coutPiece = r.nb > 0 ? r.cout / r.nb : null;
+    r.coutKg = r.pate > 0 ? r.cout / (r.pate/1000) : null;
+  }
+  if(r.coutPiece != null) r.pvSug = r.coutPiece / (1 - m/100);
+  if(r.coutPiece != null && pv > 0) r.margeR = (pv - r.coutPiece) / pv * 100;
+  return r;
+}
+function nextCode(fiches, fam){
+  const p = PREFIX[fam] || 'XX'; let max = 0;
+  fiches.forEach(f => { const m = String(f.code||'').match(new RegExp('^'+p+'-(\\d+)$')); if(m) max = Math.max(max, +m[1]); });
+  return p + '-' + String(max+1).padStart(3,'0');
+}
+/*PURE-END*/
+
+const T = {
+ fr:{
+  home:'Accueil', fiches:'Fiches', fab:'Fabrication', terrain:'Terrain', set:'Réglages',
+  online:'En ligne', offline:'Hors ligne', role:'Rôle',
+  r_chef:'Chef BoulPat', r_equipe:"Chef d'équipe / Boulanger / Pâtissier", r_moniteur:'Moniteur (lecture seule)',
+  h_home:'Rayon Boulangerie-Pâtisserie', s_home:'Quatre familles, une seule source de recettes.',
+  fam_fab:'Boulangerie fabriquée', fam_negoce:'Boulangerie négoce', fam_vienn:'Viennoiserie', fam_pfine:'Pâtisserie fine', fam_pmaroc:'Pâtisserie marocaine',
+  d_fab:'Pain blanc, complet, céréales, pains spéciaux', d_negoce:'Achat-revente : DLC, prix, fournisseur, étiquetage',
+  d_vienn:'Croissant, pain choc…', d_pfine:'Éclairs, millefeuille, tartes', d_pmaroc:'Cornes de gazelle, chebakia, fekkas, briouates',
+  fiches_n:'fiches', road:'Feuille de route',
+  h_fiches:'Fiches techniques', s_fiches:'Recettes standard, modifiables.',
+  e_fiches:'Aucune fiche pour le moment', p_fiches:"Créez votre première fiche, ou chargez deux recettes d'exemple pour tester.",
+  new_fiche:'Créer une fiche', seed:"Charger 2 recettes d'exemple",
+  h_fab:'Fabrication du jour', s_fab:'Commande du chef → Ordre de Fabrication et besoins globaux.',
+  e_fab:'Aucun ordre de fabrication', p_fab:"Le générateur d'OF arrive à l'étape 3.",
+  h_terrain:'Mode terrain', s_terrain:'Gros boutons, plein écran, minuteur, étapes à cocher.',
+  e_terrain:'Rien à exécuter pour le moment', p_terrain:"Le mode terrain s'active avec les ordres de fabrication (étape 4).",
+  h_set:'Réglages', s_set:"Langue, rôle et droits d'accès.", lang:'Langue', rights:'Droits par rôle',
+  c_fiches:'Fiches', c_of:'Ordres de fabrication', c_del:'Supprimer', c_imp:'Importer', c_cout:'Voir les coûts',
+  rw:'Lecture + écriture', r:'Lecture', exec:'Exécution',
+  st1:'Socle : PWA, FR/AR, rôles, familles', st2:'Fiches techniques : création, calculs, allergènes, duplication',
+  st3:'Fabrication : saisie des commandes, OF, besoins globaux', st4:'Mode terrain : minuteur, étapes, plein écran',
+  st5:'Import du fichier source, photos des étapes, export PDF, QR code', st6:'Sauvegarde cloud (Firebase) et synchronisation', now:'En cours',
+  back:'Retour', save:'Enregistrer', edit:'Modifier', dup:'Dupliquer', del:'Supprimer', print:'Imprimer',
+  search:'Rechercher un nom, un code, un ingrédient', all_fam:'Toutes les familles', all_st:'Tous les statuts', no_result:'Aucune fiche ne correspond à cette recherche.',
+  s_id:'Identité', nom_fr:'Nom (français)', nom_ar:'Nom (arabe)', code:'Code interne', famille:'Famille', statut:'Statut',
+  photo:'Photo du produit fini', photo_add:'Choisir une photo', photo_del:'Retirer la photo',
+  s_rec:'Recette', base:'Base de la recette', ing:'Ingrédient', qty:'Quantité', unit:'Unité', price:'Prix MAD / kg ou L', line:'Coût', add_ing:'Ajouter un ingrédient', ing_ph:'Nom (ex. Farine T65)',
+  s_rend:'Rendement', pate:'Poids pâte totale', crue:'Poids pièce crue (g)', nbp:'Nombre de pièces', cuit:'Poids cuit (g)', perte:'Perte à la cuisson',
+  s_proc:'Procédé de fabrication', add_step:'Ajouter une étape', step_desc:'Description', dur:'Durée (min)', temp:'Temp. (°C)', total_time:'Temps total estimé',
+  tp_petrissage:'Pétrissage', tp_pointage:'Pointage', tp_faconnage:'Façonnage', tp_appret:'Apprêt', tp_cuisson:'Cuisson', tp_finitions:'Finitions', tp_autre:'Autre',
+  s_mat:'Matériel et moule', materiel:'Type de plaque, moule', s_cons:'Conservation', dlc:'DLC fabrication (jours)', stockage:'Conditions de stockage', congel:'Congélation / décongélation',
+  s_all:'Allergènes', all_hint:'Détectés automatiquement à partir des ingrédients. Touchez un allergène pour corriger.', no_all:'Aucun allergène détecté',
+  a_gluten:'Gluten', a_oeufs:'Œufs', a_lait:'Lait', a_coque:'Fruits à coque', a_arachide:'Arachides', a_sesame:'Sésame', a_soja:'Soja', a_poisson:'Poisson',
+  a_crustaces:'Crustacés', a_mollusques:'Mollusques', a_celeri:'Céleri', a_moutarde:'Moutarde', a_lupin:'Lupin', a_sulfites:'Sulfites',
+  s_calc:'Calculs', marge_c:'Taux de marge cible (%)', pv:'Prix de vente (MAD)', cost_tot:'Coût total de la recette', cost_pce:'Prix de revient / pièce',
+  cost_kg:'Prix de revient / kg de pâte', pv_sug:'Prix de vente suggéré', marge_r:'Marge réelle',
+  s_neg:'Produit négoce', fourn:'Fournisseur', compo:'Composition', pa:"Prix d'achat (MAD)", etiq:'Étiquetage (mentions)',
+  sv_validee:'Validée par le moniteur', sv_test:'En test', sv_archivee:'Archivée',
+  err_nom:'Le nom français est obligatoire.', err_store:"Mémoire de l'appareil pleine : enregistrement impossible.", saved:'Fiche enregistrée', deleted:'Fiche supprimée', dup_ok:'Fiche dupliquée',
+  discard:'Quitter sans enregistrer les modifications ?', confirm_del:'Supprimer cette fiche définitivement ?', copy:'(copie)',
+  new_title:'Nouvelle fiche', edit_title:'Modifier la fiche', maj:'Dernière modification', no_ing:'Aucun ingrédient', min:'min', seeded:'Exemples ajoutés'
+ },
+ ar:{
+  home:'الرئيسية', fiches:'البطاقات', fab:'الإنتاج', terrain:'الورشة', set:'الإعدادات',
+  online:'متصل', offline:'غير متصل', role:'الدور',
+  r_chef:'رئيس المخبزة والحلويات', r_equipe:'رئيس فريق / خباز / حلواني', r_moniteur:'المراقب (قراءة فقط)',
+  h_home:'قسم المخبزة والحلويات', s_home:'أربع عائلات، ومصدر واحد للوصفات.',
+  fam_fab:'مخبزة مُصنَّعة', fam_negoce:'مخبزة تجارية', fam_vienn:'فيينوزري', fam_pfine:'حلويات راقية', fam_pmaroc:'حلويات مغربية',
+  d_fab:'خبز أبيض، كامل، حبوب، خبز خاص', d_negoce:'شراء وإعادة بيع: تاريخ الصلاحية، السعر، المورد، الملصق',
+  d_vienn:'كرواسون، بان شوك…', d_pfine:'إكلير، ميلفاي، تارت', d_pmaroc:'كعب الغزال، الشباكية، الفقاص، البريوات',
+  fiches_n:'بطاقات', road:'خارطة الطريق',
+  h_fiches:'البطاقات التقنية', s_fiches:'وصفات معيارية قابلة للتعديل.',
+  e_fiches:'لا توجد بطاقات حاليًا', p_fiches:'أنشئ أول بطاقة، أو حمّل وصفتين نموذجيتين للتجربة.',
+  new_fiche:'إنشاء بطاقة', seed:'تحميل وصفتين نموذجيتين',
+  h_fab:'إنتاج اليوم', s_fab:'طلب الرئيس ← أمر التصنيع والاحتياجات الإجمالية.',
+  e_fab:'لا توجد أوامر تصنيع', p_fab:'مولّد أوامر التصنيع يأتي في المرحلة 3.',
+  h_terrain:'وضع الورشة', s_terrain:'أزرار كبيرة، ملء الشاشة، مؤقت، خطوات قابلة للتحديد.',
+  e_terrain:'لا شيء للتنفيذ حاليًا', p_terrain:'يُفعَّل وضع الورشة مع أوامر التصنيع (المرحلة 4).',
+  h_set:'الإعدادات', s_set:'اللغة والدور وصلاحيات الوصول.', lang:'اللغة', rights:'الصلاحيات حسب الدور',
+  c_fiches:'البطاقات', c_of:'أوامر التصنيع', c_del:'الحذف', c_imp:'الاستيراد', c_cout:'عرض التكاليف',
+  rw:'قراءة + كتابة', r:'قراءة', exec:'تنفيذ',
+  st1:'الأساس: PWA، عربي/فرنسي، الأدوار، العائلات', st2:'البطاقات التقنية: إنشاء، حسابات، مسببات الحساسية، نسخ',
+  st3:'الإنتاج: إدخال الطلبات، أمر التصنيع، الاحتياجات الإجمالية', st4:'وضع الورشة: مؤقت، خطوات، ملء الشاشة',
+  st5:'استيراد الملف الأصلي، صور الخطوات، تصدير PDF، رمز QR', st6:'النسخ الاحتياطي السحابي (Firebase) والمزامنة', now:'جارٍ',
+  back:'رجوع', save:'حفظ', edit:'تعديل', dup:'نسخ', del:'حذف', print:'طباعة',
+  search:'ابحث بالاسم أو الرمز أو المكوّن', all_fam:'كل العائلات', all_st:'كل الحالات', no_result:'لا توجد بطاقة مطابقة للبحث.',
+  s_id:'التعريف', nom_fr:'الاسم (بالفرنسية)', nom_ar:'الاسم (بالعربية)', code:'الرمز الداخلي', famille:'العائلة', statut:'الحالة',
+  photo:'صورة المنتج النهائي', photo_add:'اختيار صورة', photo_del:'إزالة الصورة',
+  s_rec:'الوصفة', base:'أساس الوصفة', ing:'المكوّن', qty:'الكمية', unit:'الوحدة', price:'السعر درهم / كلغ أو لتر', line:'التكلفة', add_ing:'إضافة مكوّن', ing_ph:'الاسم (مثال: دقيق T65)',
+  s_rend:'المردود', pate:'الوزن الكلي للعجين', crue:'وزن القطعة نيئة (غ)', nbp:'عدد القطع', cuit:'وزن القطعة مطبوخة (غ)', perte:'الفقد عند الطبخ',
+  s_proc:'طريقة التصنيع', add_step:'إضافة خطوة', step_desc:'الوصف', dur:'المدة (دقيقة)', temp:'الحرارة (°م)', total_time:'الوقت الإجمالي المقدّر',
+  tp_petrissage:'العجن', tp_pointage:'التخمير الأول', tp_faconnage:'التشكيل', tp_appret:'التخمير النهائي', tp_cuisson:'الخَبز', tp_finitions:'اللمسات الأخيرة', tp_autre:'أخرى',
+  s_mat:'المعدات والقالب', materiel:'نوع الصينية أو القالب', s_cons:'الحفظ', dlc:'مدة الصلاحية (أيام)', stockage:'شروط التخزين', congel:'التجميد / إزالة التجميد',
+  s_all:'مسببات الحساسية', all_hint:'تُكتشف تلقائيًا من المكوّنات. المس أي عنصر للتصحيح.', no_all:'لم يتم اكتشاف أي مسبب للحساسية',
+  a_gluten:'الغلوتين', a_oeufs:'البيض', a_lait:'الحليب', a_coque:'المكسرات', a_arachide:'الفول السوداني', a_sesame:'السمسم', a_soja:'الصويا', a_poisson:'السمك',
+  a_crustaces:'القشريات', a_mollusques:'الرخويات', a_celeri:'الكرفس', a_moutarde:'الخردل', a_lupin:'الترمس', a_sulfites:'الكبريتات',
+  s_calc:'الحسابات', marge_c:'نسبة الربح المستهدفة (%)', pv:'سعر البيع (درهم)', cost_tot:'التكلفة الإجمالية للوصفة', cost_pce:'سعر التكلفة / قطعة',
+  cost_kg:'سعر التكلفة / كلغ عجين', pv_sug:'سعر البيع المقترح', marge_r:'الهامش الفعلي',
+  s_neg:'منتج تجاري', fourn:'المورد', compo:'التركيبة', pa:'سعر الشراء (درهم)', etiq:'بيانات الملصق',
+  sv_validee:'مصادق عليها من المراقب', sv_test:'قيد التجربة', sv_archivee:'مؤرشفة',
+  err_nom:'الاسم بالفرنسية إلزامي.', err_store:'ذاكرة الجهاز ممتلئة: تعذّر الحفظ.', saved:'تم حفظ البطاقة', deleted:'تم حذف البطاقة', dup_ok:'تم نسخ البطاقة',
+  discard:'المغادرة دون حفظ التعديلات؟', confirm_del:'حذف هذه البطاقة نهائيًا؟', copy:'(نسخة)',
+  new_title:'بطاقة جديدة', edit_title:'تعديل البطاقة', maj:'آخر تعديل', no_ing:'لا توجد مكوّنات', min:'د', seeded:'تمت إضافة النماذج'
+ }
+};
+
+Object.assign(T.fr,{
+  st3:'Connexion et synchronisation Firebase', st4:'Fabrication : commandes, OF, besoins globaux',
+  st5:'Mode terrain : minuteur, étapes, plein écran', st6:'Fichier source, photos des étapes, PDF, QR code',
+  auth_title:'Connexion', signup:'Créer un compte', email:'Adresse e-mail', pwd:'Mot de passe', login:'Se connecter', google:'Continuer avec Google',
+  logout:'Déconnexion', confirm_logout:'Se déconnecter ?', loading:'Chargement…', retry:'Réessayer', copy:"Copier l'identifiant", copied:'Identifiant copié',
+  to_signup:'Pas de compte ? Créer un compte', to_login:'Déjà un compte ? Se connecter',
+  pending_t:'Compte en attente d’activation', pending_p:'Votre compte est créé, mais le Chef BoulPat doit encore vous attribuer un rôle. Transmettez-lui cet identifiant :',
+  offline_first:'Une connexion internet est nécessaire pour la première connexion.',
+  auth_bad:'E-mail ou mot de passe incorrect.', auth_exists:'Un compte existe déjà avec cet e-mail.', auth_weak:'Mot de passe trop court (6 caractères minimum).',
+  auth_email:'Adresse e-mail invalide.', auth_net:'Réseau indisponible. Vérifiez votre connexion.', auth_many:'Trop de tentatives. Réessayez dans quelques minutes.',
+  auth_popup:'Connexion Google annulée.', auth_domain:"Ce site n'est pas autorisé dans Firebase (Authentication → Paramètres → Domaines autorisés).",
+  err_perm:'Action refusée : droits insuffisants.', err_cloud:'Synchronisation impossible pour le moment.'
+});
+Object.assign(T.ar,{
+  st3:'تسجيل الدخول والمزامنة مع Firebase', st4:'الإنتاج: الطلبات، أمر التصنيع، الاحتياجات الإجمالية',
+  st5:'وضع الورشة: مؤقت، خطوات، ملء الشاشة', st6:'الملف الأصلي، صور الخطوات، PDF، رمز QR',
+  auth_title:'تسجيل الدخول', signup:'إنشاء حساب', email:'البريد الإلكتروني', pwd:'كلمة المرور', login:'دخول', google:'المتابعة عبر Google',
+  logout:'تسجيل الخروج', confirm_logout:'تسجيل الخروج؟', loading:'جارٍ التحميل…', retry:'إعادة المحاولة', copy:'نسخ المعرّف', copied:'تم نسخ المعرّف',
+  to_signup:'ليس لديك حساب؟ أنشئ حسابًا', to_login:'لديك حساب؟ سجّل الدخول',
+  pending_t:'الحساب في انتظار التفعيل', pending_p:'تم إنشاء حسابك، لكن على رئيس القسم أن يمنحك دورًا. أرسل له هذا المعرّف:',
+  offline_first:'يلزم اتصال بالإنترنت عند أول تسجيل دخول.',
+  auth_bad:'البريد الإلكتروني أو كلمة المرور غير صحيحة.', auth_exists:'يوجد حساب بهذا البريد الإلكتروني.', auth_weak:'كلمة المرور قصيرة (6 أحرف على الأقل).',
+  auth_email:'بريد إلكتروني غير صالح.', auth_net:'الشبكة غير متاحة. تحقق من الاتصال.', auth_many:'محاولات كثيرة. أعد المحاولة بعد دقائق.',
+  auth_popup:'تم إلغاء الدخول عبر Google.', auth_domain:'هذا الموقع غير مصرّح به في Firebase.',
+  err_perm:'العملية مرفوضة: صلاحيات غير كافية.', err_cloud:'تعذّرت المزامنة حاليًا.'
+});
+
+/* ---- Droits ---- */
+const FAMILIES = [
+  { id:'boul_fab',  key:'fab'    }, { id:'boul_neg',  key:'negoce' }, { id:'viennois', key:'vienn' },
+  { id:'pat_fine',  key:'pfine'  }, { id:'pat_maroc', key:'pmaroc' }
+];
+const ROLES = {
+  chef:    { fiches:'rw', of:'rw', delete:true,  import:true,  cout:true  },
+  equipe:  { fiches:'r',  of:'rw', delete:false, import:false, cout:false },
+  moniteur:{ fiches:'r',  of:'r',  delete:false, import:false, cout:false }
+};
+const can = a => { const p = ROLES[S.role]; return a==='write' ? p.fiches==='rw' : a==='exec' ? p.of==='rw' : !!p[a]; };
+
+/* ---- État ---- */
+const store = {
+  get(k,d){ try{ const v = localStorage.getItem('bpm.'+k); return v===null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k,v){ try{ localStorage.setItem('bpm.'+k, JSON.stringify(v)); return true; }catch(e){ return false; } }
+};
+const S = {
+  lang: store.get('lang','fr'), role: store.get('role','chef'), view:'home',
+  fiches: store.get('fiches',[]), fv:{mode:'list'}, draft:null, dirty:false,
+  q:'', ffam:'', fst:'',
+  auth:{state:'loading', user:null, err:'', mode:'login', email:'', locked:false}
+};
+const t = k => (T[S.lang][k] != null ? T[S.lang][k] : (T.fr[k] != null ? T.fr[k] : k));
+const $ = s => document.querySelector(s);
+const fmt = (n,dmin=0,dmax=2) => (n==null || !isFinite(n)) ? '—' :
+  n.toLocaleString(S.lang==='ar' ? 'ar-MA-u-nu-latn' : 'fr-FR',{minimumFractionDigits:dmin,maximumFractionDigits:dmax});
+const money = n => n==null ? '—' : fmt(n,2,2) + ' MAD';
+const pct   = n => n==null ? '—' : fmt(n,1,1) + ' %';
+const fname = f => S.lang==='ar' ? (f.nomAr || f.nomFr) : f.nomFr;
+const famKey = id => (FAMILIES.find(x => x.id===id) || FAMILIES[0]).key;
+
+function persist(){
+  try{ localStorage.setItem('bpm.fiches', JSON.stringify(S.fiches)); return true; }
+  catch(e){ toast(t('err_store')); return false; }
+}
+let toastT;
+function toast(msg){
+  const el = $('#toast'); el.textContent = msg; el.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), 2600);
+}
+
+/* ---- Icônes ---- */
+const IC = {
+  home:'<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+  fiches:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/>',
+  fab:'<path d="M4 20V10l5 3V9l5 3V6l6 3v11z"/>',
+  terrain:'<rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="12" r="3.5"/><path d="M12 10v2l1.5 1"/>',
+  set:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>'
+};
+const icon = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
+
+/* ---- Modèle ---- */
+function newFiche(fam){
+  return { id:uid(), code:'', nomFr:'', nomAr:'', famille:fam||'boul_fab', statut:'test', photo:'',
+    baseLabel:'1 kg de farine', ingredients:[{nom:'',qte:'',unite:'g',prix:''}], pieceCrue:'', poidsCuit:'',
+    etapes:[], materiel:'', dlc:'', stockage:'', congel:'', margeCible:'40', prixVente:'',
+    fournisseur:'', composition:'', prixAchat:'', etiquetage:'', allerg:{add:[],rem:[]}, maj:'' };
+}
+const clone = o => JSON.parse(JSON.stringify(o));
+
+function seedExamples(){
+  const mk = (o) => Object.assign(newFiche(o.famille), o, {id:uid(), maj:new Date().toISOString()});
+  const a = mk({ famille:'boul_fab', nomFr:'Pain complet (exemple)', nomAr:'خبز كامل (نموذج)', statut:'test', baseLabel:'1 kg de farine',
+    ingredients:[
+      {nom:'Farine complète',qte:'1000',unite:'g',prix:'6'},{nom:'Eau',qte:'650',unite:'ml',prix:'0'},
+      {nom:'Levure fraîche',qte:'20',unite:'g',prix:'40'},{nom:'Sel',qte:'20',unite:'g',prix:'3'}],
+    pieceCrue:'350', poidsCuit:'300',
+    etapes:[{type:'petrissage',desc:'Pétrir 4 min en 1re vitesse puis 8 min en 2e',duree:'12',temp:''},
+            {type:'pointage',desc:'Pointage en bac couvert',duree:'60',temp:''},
+            {type:'faconnage',desc:'Diviser et façonner',duree:'15',temp:''},
+            {type:'appret',desc:'Apprêt en chambre de pousse',duree:'45',temp:''},
+            {type:'cuisson',desc:'Cuisson avec buée',duree:'30',temp:'230'}],
+    materiel:'Plaque perforée', dlc:'1', stockage:'Température ambiante, à l’abri de l’humidité', congel:'' });
+  const b = mk({ famille:'pat_maroc', nomFr:'Cornes de gazelle (exemple)', nomAr:'كعب الغزال (نموذج)', statut:'test', baseLabel:'1 recette',
+    ingredients:[
+      {nom:'Farine',qte:'500',unite:'g',prix:'6'},{nom:'Beurre',qte:'100',unite:'g',prix:'70'},
+      {nom:'Eau de fleur d’oranger',qte:'60',unite:'ml',prix:'30'},{nom:'Sel',qte:'3',unite:'g',prix:'3'},
+      {nom:'Amandes en poudre',qte:'500',unite:'g',prix:'120'},{nom:'Sucre glace',qte:'250',unite:'g',prix:'9'},
+      {nom:'Cannelle',qte:'3',unite:'g',prix:'80'},{nom:'Œuf',qte:'50',unite:'g',prix:'20'}],
+    pieceCrue:'35', poidsCuit:'33', prixVente:'',
+    etapes:[{type:'petrissage',desc:'Préparer la pâte et la laisser reposer',duree:'20',temp:''},
+            {type:'faconnage',desc:'Étaler, garnir de farce aux amandes, former les cornes',duree:'40',temp:''},
+            {type:'cuisson',desc:'Cuisson douce, sans coloration',duree:'15',temp:'170'}],
+    materiel:'Plaque pâtisserie, papier cuisson', dlc:'7', stockage:'Boîte hermétique, au sec', congel:'' });
+  [a,b].forEach(f => { f.code = nextCode(S.fiches, f.famille); S.fiches.push(f); cloudSave(f); });
+  if(persist()) toast(t('seeded'));
+}
+
+/* ---- Fragments ---- */
+const tagsHTML = set => [...set].map(id => `<span class="al">${t('a_'+id)}</span>`).join('');
+const statutHTML = s => `<span class="badge s-${s}">${t('sv_'+s)}</span>`;
+const opt = (v, label, cur) => `<option value="${esc(v)}" ${String(cur)===String(v)?'selected':''}>${esc(label)}</option>`;
+const tl = f => (f.etapes||[]).reduce((s,e) => s + num(e.duree), 0);
+const fmtTime = m => m>=60 ? Math.floor(m/60) + ' h ' + String(Math.round(m%60)).padStart(2,'0') : Math.round(m) + ' ' + t('min');
+
+function cardHTML(f){
+  const alt = S.lang==='ar' ? f.nomFr : f.nomAr;
+  return `<button class="fcard" data-act="open" data-id="${f.id}">
+    <span class="ph">${f.photo ? `<img src="${f.photo}" alt="">` : `<span class="noph">${icon('fiches')}</span>`}</span>
+    <span class="ft"><strong>${esc(fname(f))}</strong>${alt ? `<small dir="auto">${esc(alt)}</small>` : ''}
+      <span><span class="tag">${esc(f.code)}</span><span class="tag">${t('fam_'+famKey(f.famille))}</span></span></span>
+    ${statutHTML(f.statut)}</button>`;
+}
+function searchText(f){
+  return norm([f.nomFr,f.nomAr,f.code,f.fournisseur,f.composition,(f.ingredients||[]).map(i=>i.nom).join(' ')].join(' '));
+}
+function listHTML(){
+  if(!S.fiches.length){
+    return `<div class="empty"><strong>${t('e_fiches')}</strong><p>${t('p_fiches')}</p>
+      ${can('write') ? `<div class="row" style="justify-content:center"><button class="btn" data-act="new">${t('new_fiche')}</button>
+      <button class="btn ghost" data-act="seed">${t('seed')}</button></div>` : ''}</div>`;
+  }
+  const q = norm(S.q);
+  const arr = S.fiches.filter(f => (!S.ffam || f.famille===S.ffam) && (!S.fst || f.statut===S.fst) && (!q || searchText(f).includes(q)))
+    .sort((a,b) => fname(a).localeCompare(fname(b), S.lang));
+  if(!arr.length) return `<div class="empty"><p>${t('no_result')}</p></div>`;
+  return `<div class="grid">${arr.map(cardHTML).join('')}</div>`;
+}
+function listPage(){
+  return `<h1>${t('h_fiches')}</h1><p class="sub">${t('s_fiches')}</p>
+    <div class="toolbar">
+      <input id="q" type="search" placeholder="${esc(t('search'))}" aria-label="${esc(t('search'))}" value="${esc(S.q)}">
+      <select id="ffam" aria-label="${t('famille')}"><option value="">${t('all_fam')}</option>${FAMILIES.map(f=>opt(f.id,t('fam_'+f.key),S.ffam)).join('')}</select>
+      <select id="fst" aria-label="${t('statut')}"><option value="">${t('all_st')}</option>${['validee','test','archivee'].map(s=>opt(s,t('sv_'+s),S.fst)).join('')}</select>
+      ${can('write') && S.fiches.length ? `<button class="btn" data-act="new">${t('new_fiche')}</button>` : ''}
+    </div><div id="list">${listHTML()}</div>`;
+}
+
+/* ---- Fiche : consultation ---- */
+function resultsRows(f, c, edit){
+  const rows = [];
+  if(!isNegoce(f)){
+    rows.push([t('cost_tot'), money(c.cout)]);
+  }
+  rows.push([t('cost_pce'), money(c.coutPiece)]);
+  if(!isNegoce(f)) rows.push([t('cost_kg'), money(c.coutKg)]);
+  rows.push([t('pv_sug') + ' (' + fmt(num(f.margeCible),0,1) + ' %)', money(c.pvSug)]);
+  rows.push([t('marge_r'), pct(c.margeR)]);
+  return `<dl class="kv">${rows.map(r => `<div><dt>${r[0]}</dt><dd>${r[1]}</dd></div>`).join('')}</dl>`;
+}
+function detailHTML(f){
+  const c = calc(f), al = finalAllerg(f), cost = can('cout'), neg = isNegoce(f);
+  const alt = S.lang==='ar' ? f.nomFr : f.nomAr;
+  const rec = neg ? `
+    <section class="card"><h2>${t('s_neg')}</h2><dl class="kv">
+      <div><dt>${t('fourn')}</dt><dd>${esc(f.fournisseur)||'—'}</dd></div>
+      ${cost ? `<div><dt>${t('pa')}</dt><dd>${money(num(f.prixAchat)||null)}</dd></div>` : ''}
+      <div><dt>${t('dlc')}</dt><dd>${esc(f.dlc)||'—'}</dd></div></dl>
+      <p><strong>${t('compo')}</strong><br>${esc(f.composition)||'—'}</p>
+      <p><strong>${t('etiq')}</strong><br>${esc(f.etiquetage)||'—'}</p></section>` : `
+    <section class="card"><h2>${t('s_rec')}</h2><p class="muted">${t('base')} : ${esc(f.baseLabel)||'—'}</p>
+      ${(f.ingredients||[]).length ? `<div class="scroll"><table><thead><tr><th>${t('ing')}</th><th>${t('qty')}</th><th>${t('unit')}</th>
+        <th>${t('s_all')}</th>${cost?`<th>${t('line')}</th>`:''}</tr></thead><tbody>
+        ${f.ingredients.map(i => `<tr><td>${esc(i.nom)}</td><td>${esc(i.qte)}</td><td>${i.unite}</td>
+          <td>${tagsHTML(detect(i.nom))}</td>${cost?`<td>${money(lineCost(i))}</td>`:''}</tr>`).join('')}</tbody></table></div>` : `<p class="muted">${t('no_ing')}</p>`}
+    </section>
+    <section class="card"><h2>${t('s_rend')}</h2><dl class="kv">
+      <div><dt>${t('pate')}</dt><dd>${fmt(c.pate,0,0)} g</dd></div>
+      <div><dt>${t('crue')}</dt><dd>${esc(f.pieceCrue)||'—'}</dd></div>
+      <div><dt>${t('nbp')}</dt><dd>${c.nb||'—'}</dd></div>
+      <div><dt>${t('cuit')}</dt><dd>${esc(f.poidsCuit)||'—'}</dd></div>
+      <div><dt>${t('perte')}</dt><dd>${pct(c.perte)}</dd></div></dl></section>
+    <section class="card"><h2>${t('s_proc')}</h2>
+      ${(f.etapes||[]).length ? `<ol class="proc">${f.etapes.map(e => `<li><strong>${t('tp_'+e.type)}</strong>
+        <span class="muted">${e.duree ? fmt(num(e.duree),0,0)+' '+t('min') : ''}${e.temp ? ' · ' + esc(e.temp) + ' °C' : ''}</span>
+        <div>${esc(e.desc)}</div></li>`).join('')}</ol><p class="muted">${t('total_time')} : ${fmtTime(tl(f))}</p>` : '<p class="muted">—</p>'}
+    </section>
+    <section class="card"><h2>${t('s_mat')} / ${t('s_cons')}</h2><dl class="kv">
+      <div><dt>${t('materiel')}</dt><dd>${esc(f.materiel)||'—'}</dd></div>
+      <div><dt>${t('dlc')}</dt><dd>${esc(f.dlc)||'—'}</dd></div>
+      <div><dt>${t('stockage')}</dt><dd>${esc(f.stockage)||'—'}</dd></div>
+      <div><dt>${t('congel')}</dt><dd>${esc(f.congel)||'—'}</dd></div></dl></section>`;
+  return `<div class="noprint row" style="margin-bottom:14px">
+      <button class="btn ghost" data-act="back">${t('back')}</button>
+      <span style="margin-inline-start:auto"></span>
+      ${can('write') ? `<button class="btn" data-act="edit" data-id="${f.id}">${t('edit')}</button>
+        <button class="btn ghost" data-act="dup" data-id="${f.id}">${t('dup')}</button>` : ''}
+      <button class="btn ghost" data-act="print">${t('print')}</button>
+      ${can('delete') ? `<button class="btn danger" data-act="del" data-id="${f.id}">${t('del')}</button>` : ''}</div>
+    <section class="card head">
+      ${f.photo ? `<img class="big" src="${f.photo}" alt="">` : ''}
+      <div><h1>${esc(fname(f))}</h1>${alt ? `<p class="sub" dir="auto">${esc(alt)}</p>` : ''}
+        <p><span class="tag">${esc(f.code)}</span><span class="tag">${t('fam_'+famKey(f.famille))}</span>${statutHTML(f.statut)}</p>
+        <p class="muted">${t('maj')} : ${f.maj ? new Date(f.maj).toLocaleDateString(S.lang==='ar'?'ar-MA-u-nu-latn':'fr-FR') : '—'}</p></div></section>
+    ${rec}
+    <section class="card"><h2>${t('s_all')}</h2>${al.size ? `<p>${tagsHTML(al)}</p>` : `<p class="muted">${t('no_all')}</p>`}</section>
+    ${cost ? `<section class="card"><h2>${t('s_calc')}</h2>${resultsRows(f,c)}</section>` : ''}`;
+}
+
+/* ---- Fiche : édition ---- */
+const fl = (label, inner, cls='') => `<label class="fl ${cls}"><span>${label}</span>${inner}</label>`;
+const inp = (key, val, extra='') => `<input data-f="${key}" value="${esc(val)}" ${extra}>`;
+function ingRow(i, k){
+  return `<div class="ing">
+    <input class="n" placeholder="${esc(t('ing_ph'))}" aria-label="${t('ing')}" data-i="${k}" data-k="nom" value="${esc(i.nom)}" dir="auto">
+    <input class="q" inputmode="decimal" placeholder="${t('qty')}" aria-label="${t('qty')}" data-i="${k}" data-k="qte" value="${esc(i.qte)}">
+    <select class="u" aria-label="${t('unit')}" data-i="${k}" data-k="unite">${UNITS.map(u => opt(u,u,i.unite)).join('')}</select>
+    <input class="p" inputmode="decimal" placeholder="${esc(t('price'))}" aria-label="${esc(t('price'))}" data-i="${k}" data-k="prix" value="${esc(i.prix)}">
+    <button class="x" data-act="del-ing" data-idx="${k}" aria-label="${t('del')}">×</button>
+    <div class="meta"><span id="ia-${k}"></span><span class="muted" id="ic-${k}"></span></div></div>`;
+}
+function stepRow(e, k, n){
+  return `<div class="stp">
+    <select class="ty" aria-label="${t('s_proc')}" data-s="${k}" data-k="type">${STEP_TYPES.map(s => opt(s,t('tp_'+s),e.type)).join('')}</select>
+    <input class="d" placeholder="${t('step_desc')}" aria-label="${t('step_desc')}" data-s="${k}" data-k="desc" value="${esc(e.desc)}" dir="auto">
+    <input class="q" inputmode="decimal" placeholder="${t('dur')}" aria-label="${t('dur')}" data-s="${k}" data-k="duree" value="${esc(e.duree)}">
+    <input class="q" inputmode="decimal" placeholder="${t('temp')}" aria-label="${t('temp')}" data-s="${k}" data-k="temp" value="${esc(e.temp)}">
+    <span class="mv"><button data-act="up-step" data-idx="${k}" aria-label="↑" ${k===0?'disabled':''}>↑</button>
+    <button data-act="down-step" data-idx="${k}" aria-label="↓" ${k===n-1?'disabled':''}>↓</button>
+    <button class="x" data-act="del-step" data-idx="${k}" aria-label="${t('del')}">×</button></span></div>`;
+}
+function rendHTML(d){
+  if(isNegoce(d)) return '';
+  const c = calc(d);
+  return `<dl class="kv"><div><dt>${t('pate')}</dt><dd>${fmt(c.pate,0,0)} g</dd></div>
+    <div><dt>${t('nbp')}</dt><dd>${c.nb||'—'}</dd></div><div><dt>${t('perte')}</dt><dd>${pct(c.perte)}</dd></div></dl>`;
+}
+function allergHTML(d){
+  const cur = finalAllerg(d);
+  return ALLERGENS.map(a => `<button type="button" class="chipb" data-act="allerg" data-id="${a.id}" aria-pressed="${cur.has(a.id)}">${t('a_'+a.id)}</button>`).join('');
+}
+function editorHTML(){
+  const d = S.draft, neg = isNegoce(d), n = (d.etapes||[]).length;
+  const isNew = !S.fiches.some(x => x.id===d.id);
+  return `<h1>${isNew ? t('new_title') : t('edit_title')}</h1><p class="sub"> </p>
+  <div class="row" style="margin-bottom:14px"><button class="btn ghost" data-act="back">${t('back')}</button>
+    <button class="btn" data-act="save">${t('save')}</button></div>
+  <section class="card"><h2>${t('s_id')}</h2><div class="form">
+    ${fl(t('nom_fr'), inp('nomFr', d.nomFr, 'autocomplete="off"'))}
+    ${fl(t('nom_ar'), inp('nomAr', d.nomAr, 'dir="rtl" lang="ar"'))}
+    ${fl(t('code'), inp('code', d.code, `placeholder="${nextCode(S.fiches, d.famille)}"`))}
+    ${fl(t('famille'), `<select data-f="famille">${FAMILIES.map(f => opt(f.id,t('fam_'+f.key),d.famille)).join('')}</select>`)}
+    ${fl(t('statut'), `<select data-f="statut">${['test','validee','archivee'].map(s => opt(s,t('sv_'+s),d.statut)).join('')}</select>`)}
+    <div class="fl"><span>${t('photo')}</span><div class="row">
+      ${d.photo ? `<img class="thumb" src="${d.photo}" alt="">` : ''}
+      <label class="btn ghost filebtn">${t('photo_add')}<input type="file" id="photo" accept="image/*" hidden></label>
+      ${d.photo ? `<button class="btn ghost" data-act="photo-del">${t('photo_del')}</button>` : ''}</div></div>
+  </div></section>
+  ${neg ? `<section class="card"><h2>${t('s_neg')}</h2><div class="form">
+      ${fl(t('fourn'), inp('fournisseur', d.fournisseur))}
+      ${fl(t('pa'), inp('prixAchat', d.prixAchat, 'inputmode="decimal"'))}
+      ${fl(t('dlc'), inp('dlc', d.dlc, 'inputmode="numeric"'))}
+      ${fl(t('stockage'), inp('stockage', d.stockage))}
+      ${fl(t('compo'), `<textarea data-f="composition" rows="3" dir="auto">${esc(d.composition)}</textarea>`, 'wide')}
+      ${fl(t('etiq'), `<textarea data-f="etiquetage" rows="3" dir="auto">${esc(d.etiquetage)}</textarea>`, 'wide')}
+    </div></section>` : `
+  <section class="card"><h2>${t('s_rec')}</h2>
+    ${fl(t('base'), `<input data-f="baseLabel" list="bases" value="${esc(d.baseLabel)}"><datalist id="bases"><option value="1 kg de farine"><option value="1 plaque"></datalist>`)}
+    <div class="ings" id="ings">${d.ingredients.map(ingRow).join('')}</div>
+    <button class="btn ghost" data-act="add-ing">${t('add_ing')}</button></section>
+  <section class="card"><h2>${t('s_rend')}</h2><div class="form">
+    ${fl(t('crue'), inp('pieceCrue', d.pieceCrue, 'inputmode="decimal"'))}
+    ${fl(t('cuit'), inp('poidsCuit', d.poidsCuit, 'inputmode="decimal"'))}</div>
+    <div id="rend">${rendHTML(d)}</div></section>
+  <section class="card"><h2>${t('s_proc')}</h2>
+    <div class="steps-ed">${(d.etapes||[]).map((e,k) => stepRow(e,k,n)).join('')}</div>
+    <button class="btn ghost" data-act="add-step">${t('add_step')}</button></section>
+  <section class="card"><h2>${t('s_mat')} / ${t('s_cons')}</h2><div class="form">
+    ${fl(t('materiel'), inp('materiel', d.materiel))}
+    ${fl(t('dlc'), inp('dlc', d.dlc, 'inputmode="numeric"'))}
+    ${fl(t('stockage'), inp('stockage', d.stockage))}
+    ${fl(t('congel'), inp('congel', d.congel))}</div></section>`}
+  <section class="card"><h2>${t('s_all')}</h2><p class="muted">${t('all_hint')}</p><div class="chips" id="allerg">${allergHTML(d)}</div></section>
+  <section class="card"><h2>${t('s_calc')}</h2><div class="form">
+    ${fl(t('marge_c'), inp('margeCible', d.margeCible, 'inputmode="decimal"'))}
+    ${fl(t('pv'), inp('prixVente', d.prixVente, 'inputmode="decimal"'))}</div>
+    <div id="calc">${resultsRows(d, calc(d))}</div></section>
+  <div class="row"><button class="btn" data-act="save">${t('save')}</button><button class="btn ghost" data-act="back">${t('back')}</button></div>`;
+}
+function refreshCalc(){
+  const d = S.draft; if(!d) return;
+  (d.ingredients||[]).forEach((i,k) => {
+    const a = $('#ia-'+k), c = $('#ic-'+k);
+    if(a) a.innerHTML = tagsHTML(detect(i.nom));
+    if(c) c.textContent = money(lineCost(i));
+  });
+  const r = $('#rend'); if(r) r.innerHTML = rendHTML(d);
+  const k = $('#calc'); if(k) k.innerHTML = resultsRows(d, calc(d));
+  const al = $('#allerg'); if(al) al.innerHTML = allergHTML(d);
+}
+function afterEditorRender(){ if(S.view==='fiches' && S.fv.mode==='edit') refreshCalc(); }
+
+/* ---- Vues ---- */
+const VIEWS = {
+  home(){
+    const count = id => S.fiches.filter(f => f.famille===id).length;
+    const fam = FAMILIES.map(f => `<button class="card famc" data-k="${f.key}" data-fam="${f.id}">
+      <h3>${t('fam_'+f.key)}</h3><span class="n">${count(f.id)}</span><small>${t('fiches_n')}</small><span>${t('d_'+f.key)}</span></button>`).join('');
+    const steps = [1,2,3,4,5,6].map(n => `<li class="${n<=3?'done':n===4?'now':''}"><span class="b">${n<=3?'✓':n}</span>
+      <div><strong>${t('st'+n)}</strong>${n===4?`<span>${t('now')}</span>`:''}</div></li>`).join('');
+    return `<h1>${t('h_home')}</h1><p class="sub">${t('s_home')}</p><div class="fam">${fam}</div>
+      <h2>${t('road')}</h2><ol class="steps">${steps}</ol>`;
+  },
+  fiches(){
+    if(S.fv.mode==='edit' && S.draft) return editorHTML();
+    if(S.fv.mode==='view'){
+      const f = S.fiches.find(x => x.id===S.fv.id);
+      if(f) return detailHTML(f);
+      S.fv = {mode:'list'};
+    }
+    return listPage();
+  },
+  fab(){ return `<h1>${t('h_fab')}</h1><p class="sub">${t('s_fab')}</p><div class="empty"><strong>${t('e_fab')}</strong><p>${t('p_fab')}</p></div>`; },
+  terrain(){ return `<h1>${t('h_terrain')}</h1><p class="sub">${t('s_terrain')}</p><div class="empty"><strong>${t('e_terrain')}</strong><p>${t('p_terrain')}</p></div>`; },
+  set(){
+    const mark = v => v ? '<span class="yes">✓</span>' : '<span class="no">—</span>';
+    const rows = Object.keys(ROLES).map(r => { const p = ROLES[r];
+      return `<tr><td>${t('r_'+r)}</td><td>${t(p.fiches)}</td><td>${p.of==='rw'?t('exec'):t('r')}</td><td>${mark(p.delete)}</td><td>${mark(p.import)}</td><td>${mark(p.cout)}</td></tr>`; }).join('');
+    return `<h1>${t('h_set')}</h1><p class="sub">${t('s_set')}</p>
+      <div class="field"><label for="lang2">${t('lang')}</label><select id="lang2"><option value="fr" ${S.lang==='fr'?'selected':''}>Français</option><option value="ar" ${S.lang==='ar'?'selected':''}>العربية</option></select></div>
+      <h2>${t('rights')}</h2><div class="scroll"><table><thead><tr><th>${t('role')}</th><th>${t('c_fiches')}</th><th>${t('c_of')}</th><th>${t('c_del')}</th><th>${t('c_imp')}</th><th>${t('c_cout')}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+};
+const NAV = ['home','fiches','fab','terrain','set'];
+
+function render(){
+  document.documentElement.lang = S.lang;
+  document.documentElement.dir  = S.lang==='ar' ? 'rtl' : 'ltr';
+  $('#nav').innerHTML = NAV.map(k => `<button data-v="${k}" ${S.view===k?'aria-current="page"':''}>${icon(k)}<span>${t(k)}</span></button>`).join('');
+  $('#view').innerHTML = VIEWS[S.view]();
+  $('#role').innerHTML = Object.keys(ROLES).map(r => `<option value="${r}" ${S.role===r?'selected':''}>${t('r_'+r)}</option>`).join('');
+  $('#roleLbl').textContent = t('role');
+  $('#langBtn').textContent = S.lang==='fr' ? 'العربية' : 'Français';
+  netStatus(); afterEditorRender(); updateAuthUI();
+  const l2 = $('#lang2'); if(l2) l2.onchange = e => setLang(e.target.value);
+}
+function setLang(l){ S.lang = l; store.set('lang', l); render(); }
+const guard = () => !S.dirty || confirm(t('discard'));
+function leaveEditor(){ S.dirty = false; S.draft = null; }
+function go(v){
+  if(!guard()) return;
+  leaveEditor(); S.fv = {mode:'list'}; S.view = v; location.hash = v; render(); window.scrollTo(0,0);
+}
+function netStatus(){
+  const on = navigator.onLine;
+  $('#net .dot').classList.toggle('off', !on);
+  $('#netLbl').textContent = on ? t('online') : t('offline');
+}
+
+/* ---- Actions ---- */
+function startEdit(f){ S.draft = f ? clone(f) : newFiche(S.ffam || 'boul_fab'); S.dirty = false; S.fv = {mode:'edit', id:S.draft.id}; render(); window.scrollTo(0,0); }
+function saveDraft(){
+  const d = S.draft;
+  if(!d.nomFr.trim()){ toast(t('err_nom')); const el = document.querySelector('[data-f="nomFr"]'); if(el) el.focus(); return; }
+  if(!String(d.code).trim()) d.code = nextCode(S.fiches, d.famille);
+  d.maj = new Date().toISOString();
+  d.ingredients = (d.ingredients||[]).filter(i => String(i.nom).trim() || num(i.qte) > 0);
+  const k = S.fiches.findIndex(x => x.id===d.id);
+  if(k>=0) S.fiches[k] = d; else S.fiches.push(d);
+  const okLocal = persist(); cloudSave(d);
+  if(!okLocal && !window.BPM_CLOUD) return;
+  const id = d.id; leaveEditor(); S.fv = {mode:'view', id}; render(); window.scrollTo(0,0); toast(t('saved'));
+}
+function duplicate(id){
+  const f = S.fiches.find(x => x.id===id); if(!f) return;
+  const c = clone(f); c.id = uid(); c.nomFr = f.nomFr + ' ' + T.fr.copy; if(f.nomAr) c.nomAr = f.nomAr + ' ' + T.ar.copy;
+  c.code = nextCode(S.fiches, c.famille); c.statut = 'test'; c.maj = new Date().toISOString();
+  S.fiches.push(c); persist(); cloudSave(c); S.fv = {mode:'view', id:c.id}; render(); toast(t('dup_ok'));
+}
+function remove(id){
+  if(!confirm(t('confirm_del'))) return;
+  S.fiches = S.fiches.filter(x => x.id!==id); persist(); cloudDel(id); S.fv = {mode:'list'}; render(); toast(t('deleted'));
+}
+function toggleAllerg(id){
+  const d = S.draft; d.allerg = d.allerg || {add:[],rem:[]};
+  const auto = autoAllerg(d), on = finalAllerg(d).has(id);
+  d.allerg.add = d.allerg.add.filter(x => x!==id); d.allerg.rem = d.allerg.rem.filter(x => x!==id);
+  if(on && auto.has(id)) d.allerg.rem.push(id);
+  if(!on && !auto.has(id)) d.allerg.add.push(id);
+  S.dirty = true; refreshCalc();
+}
+function readPhoto(file){
+  const img = new Image(), url = URL.createObjectURL(file);
+  img.onload = () => {
+    const max = 480, r = Math.min(1, max / Math.max(img.width, img.height));
+    const cv = document.createElement('canvas'); cv.width = Math.round(img.width*r); cv.height = Math.round(img.height*r);
+    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+    S.draft.photo = cv.toDataURL('image/jpeg', .72); S.dirty = true; URL.revokeObjectURL(url); render();
+  };
+  img.src = url;
+}
+function focusLast(sel){ const els = document.querySelectorAll(sel); if(els.length) els[els.length-1].focus(); }
+
+
+/* ---- Authentification et synchronisation cloud (Firebase) ---- */
+const cloudSave = f => { if(window.BPM_CLOUD) window.BPM_CLOUD.save(clone(f)); };
+const cloudDel  = id => { if(window.BPM_CLOUD) window.BPM_CLOUD.del(id); };
+function authErr(e){
+  const c = (e && e.code) || '';
+  if(/invalid-credential|wrong-password|user-not-found|invalid-login/.test(c)) return t('auth_bad');
+  if(c.includes('email-already')) return t('auth_exists');
+  if(c.includes('weak-password')) return t('auth_weak');
+  if(c.includes('invalid-email')) return t('auth_email');
+  if(c.includes('network')) return t('auth_net');
+  if(c.includes('too-many')) return t('auth_many');
+  if(c.includes('popup') || c.includes('cancelled')) return t('auth_popup');
+  if(c.includes('unauthorized-domain')) return t('auth_domain');
+  return c || (e && e.message) || 'Erreur';
+}
+function authHTML(){
+  const A = S.auth, signup = A.mode==='signup';
+  const lang = `<button class="chip auth-lang" data-auth="lang" type="button">${S.lang==='fr' ? 'العربية' : 'Français'}</button>`;
+  let body = '';
+  if(A.state==='loading') body = `<p class="muted">${t('loading')}</p>`;
+  else if(A.state==='unavailable') body = `<p>${t('offline_first')}</p><button class="btn" data-auth="retry" type="button">${t('retry')}</button>`;
+  else if(A.state==='pending') body = `<h2>${t('pending_t')}</h2><p>${t('pending_p')}</p>
+      <p><code class="uid">${esc(A.user && A.user.uid)}</code></p><p class="muted">${esc(A.user && A.user.email)}</p>
+      <div class="row"><button class="btn ghost" data-auth="copy" type="button">${t('copy')}</button>
+      <button class="btn ghost" data-auth="logout" type="button">${t('logout')}</button></div>`;
+  else body = `<h2>${signup ? t('signup') : t('auth_title')}</h2>
+      <form id="authForm" novalidate>
+        <label class="fl"><span>${t('email')}</span><input name="email" type="email" autocomplete="username" inputmode="email" value="${esc(A.email)}" required></label>
+        <label class="fl"><span>${t('pwd')}</span><input name="pwd" type="password" autocomplete="${signup?'new-password':'current-password'}" required></label>
+        <p class="autherr" id="autherr" role="alert">${esc(A.err)}</p>
+        <button class="btn" type="submit">${signup ? t('signup') : t('login')}</button>
+        <button class="btn ghost" data-auth="google" type="button">${t('google')}</button>
+        <button class="linkb" data-auth="toggle" type="button">${signup ? t('to_login') : t('to_signup')}</button>
+      </form>`;
+  return `<div class="auth-card">${lang}<img src="logo.png" alt="" class="auth-logo"><h1>BOULPAT MASTER</h1>${body}</div>`;
+}
+function updateAuthUI(){
+  const A = S.auth, ov = $('#auth'), btn = $('#authBtn');
+  const gate = ['loading','login','pending','unavailable'].includes(A.state);
+  ov.hidden = !gate;
+  if(gate) ov.innerHTML = authHTML();
+  btn.hidden = !(A.user && A.state==='ready');
+  if(A.user) btn.textContent = String(A.user.email||'').split('@')[0] + ' · ' + t('logout');
+  $('#role').disabled = !!A.locked;
+}
+async function doAuth(kind){
+  const f = $('#authForm'); if(!f || !window.BPM_CLOUD) return;
+  const A = S.auth, email = f.email.value.trim(), pwd = f.pwd.value;
+  A.email = email; A.err = '';
+  if(!email || !pwd){ A.err = t('auth_bad'); $('#autherr').textContent = A.err; return; }
+  const btns = f.querySelectorAll('button'); btns.forEach(b => b.disabled = true);
+  try{ await window.BPM_CLOUD[kind](email, pwd); }
+  catch(e){ A.err = authErr(e); const el = $('#autherr'); if(el) el.textContent = A.err; btns.forEach(b => b.disabled = false); }
+}
+$('#auth').addEventListener('submit', e => { e.preventDefault(); doAuth(S.auth.mode==='signup' ? 'signup' : 'login'); });
+$('#auth').addEventListener('input', e => { if(e.target.name==='email') S.auth.email = e.target.value; });
+$('#auth').addEventListener('click', async e => {
+  const b = e.target.closest('[data-auth]'); if(!b) return;
+  const A = S.auth;
+  switch(b.dataset.auth){
+    case 'lang': setLang(S.lang==='fr' ? 'ar' : 'fr'); break;
+    case 'retry': location.reload(); break;
+    case 'toggle': A.mode = A.mode==='signup' ? 'login' : 'signup'; A.err = ''; updateAuthUI(); break;
+    case 'logout': logoutNow(); break;
+    case 'copy': try{ await navigator.clipboard.writeText(A.user.uid); toast(t('copied')); }catch(err){} break;
+    case 'google':
+      A.err = ''; try{ await window.BPM_CLOUD.google(); }catch(err){ A.err = authErr(err); const el = $('#autherr'); if(el) el.textContent = A.err; }
+      break;
+  }
+});
+function logoutNow(){
+  if(!window.BPM_CLOUD) return;
+  try{ localStorage.removeItem('bpm.fiches'); }catch(e){}
+  S.fiches = []; leaveEditor(); S.fv = {mode:'list'};
+  window.BPM_CLOUD.logout();
+}
+$('#authBtn').addEventListener('click', () => { if(confirm(t('confirm_logout'))) logoutNow(); });
+
+/* Pont appelé par le module cloud (voir le script de type module en bas de index.html) */
+window.BPM = {
+  authState(state, user){
+    const A = S.auth, was = A.state;
+    A.state = state;
+    if(state==='login'){ A.user = null; A.locked = false; A.err = ''; }
+    else if(user !== undefined) A.user = user;
+    A.locked = (state==='ready' || state==='local');
+    if(state==='ready') store.set('cloudOK', 1);
+    if(was !== state) render(); else updateAuthUI();
+  },
+  setRole(r){ if(ROLES[r]){ store.set('profileRole', r); if(S.role !== r){ S.role = r; if(S.auth.state==='ready') render(); } } },
+  getLocalFiches(){ return store.get('fiches', []); },
+  backupLocal(){ try{ localStorage.setItem('bpm.fiches.backup', localStorage.getItem('bpm.fiches') || '[]'); }catch(e){} },
+  setFiches(arr){
+    S.fiches = arr;
+    try{ localStorage.setItem('bpm.fiches', JSON.stringify(arr)); }catch(e){}
+    const ae = document.activeElement, typing = ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName);
+    if((S.view==='fiches' && S.fv.mode==='edit') || typing){ const l = $('#list'); if(l) l.innerHTML = listHTML(); }
+    else render();
+  },
+  cloudUnavailable(){
+    if(store.get('cloudOK', 0)){ S.role = store.get('profileRole', 'moniteur'); this.authState('local'); }
+    else this.authState('unavailable');
+  },
+  cloudError(e){ toast(e && e.code==='permission-denied' ? t('err_perm') : t('err_cloud')); console.warn('[Cloud]', e); }
+};
+
+/* ---- Événements ---- */
+$('#view').addEventListener('click', e => {
+  const fam = e.target.closest('[data-fam]');
+  if(fam){ S.ffam = fam.dataset.fam; S.q = ''; S.fst = ''; go('fiches'); return; }
+  const b = e.target.closest('[data-act]'); if(!b) return;
+  const id = b.dataset.id, k = +b.dataset.idx, d = S.draft;
+  switch(b.dataset.act){
+    case 'open': S.fv = {mode:'view', id}; render(); window.scrollTo(0,0); break;
+    case 'new': startEdit(null); break;
+    case 'edit': startEdit(S.fiches.find(x => x.id===id)); break;
+    case 'dup': duplicate(id); break;
+    case 'del': remove(id); break;
+    case 'print': window.print(); break;
+    case 'seed': seedExamples(); render(); break;
+    case 'back': if(!guard()) return; leaveEditor(); S.fv = {mode:'list'}; render(); window.scrollTo(0,0); break;
+    case 'save': saveDraft(); break;
+    case 'add-ing': d.ingredients.push({nom:'',qte:'',unite:'g',prix:''}); S.dirty = true; render(); focusLast('.ing .n'); break;
+    case 'del-ing': d.ingredients.splice(k,1); if(!d.ingredients.length) d.ingredients.push({nom:'',qte:'',unite:'g',prix:''}); S.dirty = true; render(); break;
+    case 'add-step': d.etapes.push({type:'petrissage',desc:'',duree:'',temp:''}); S.dirty = true; render(); focusLast('.stp .d'); break;
+    case 'del-step': d.etapes.splice(k,1); S.dirty = true; render(); break;
+    case 'up-step': if(k>0){ [d.etapes[k-1], d.etapes[k]] = [d.etapes[k], d.etapes[k-1]]; S.dirty = true; render(); } break;
+    case 'down-step': if(k<d.etapes.length-1){ [d.etapes[k+1], d.etapes[k]] = [d.etapes[k], d.etapes[k+1]]; S.dirty = true; render(); } break;
+    case 'allerg': toggleAllerg(id); break;
+    case 'photo-del': d.photo = ''; S.dirty = true; render(); break;
+  }
+});
+function onField(e){
+  const el = e.target, d = S.draft;
+  if(el.id==='q'){ S.q = el.value; $('#list').innerHTML = listHTML(); return; }
+  if(el.id==='ffam'){ S.ffam = el.value; $('#list').innerHTML = listHTML(); return; }
+  if(el.id==='fst'){ S.fst = el.value; $('#list').innerHTML = listHTML(); return; }
+  if(el.id==='photo'){ if(el.files[0]) readPhoto(el.files[0]); return; }
+  if(!d) return;
+  if(el.dataset.i !== undefined){ d.ingredients[+el.dataset.i][el.dataset.k] = el.value; }
+  else if(el.dataset.s !== undefined){ d.etapes[+el.dataset.s][el.dataset.k] = el.value; }
+  else if(el.dataset.f){
+    d[el.dataset.f] = el.value;
+    if(el.dataset.f==='famille'){ S.dirty = true; render(); return; }
+  } else return;
+  S.dirty = true; refreshCalc();
+}
+$('#view').addEventListener('input', onField);
+$('#view').addEventListener('change', e => { if(e.target.tagName==='SELECT' || e.target.type==='file') onField(e); });
+$('#nav').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if(b) go(b.dataset.v); });
+$('#langBtn').addEventListener('click', () => setLang(S.lang==='fr' ? 'ar' : 'fr'));
+$('#role').addEventListener('change', e => { S.role = e.target.value; store.set('role', S.role); render(); });
+window.addEventListener('online', netStatus); window.addEventListener('offline', netStatus);
+window.addEventListener('beforeunload', e => { if(S.dirty){ e.preventDefault(); e.returnValue = ''; } });
+const h0 = location.hash.slice(1); if(NAV.includes(h0)) S.view = h0;
+render();
+if('serviceWorker' in navigator){ window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {})); }
+
+</script>
+
+<script type="module">
+/* Pont Firebase : chargé en dynamique pour que l'application reste utilisable hors ligne */
+(async () => {
+  const B = window.BPM;
+  let cloud;
+  try{
+    cloud = await Promise.race([
+      import('./firebase-sync.js'),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))
+    ]);
+  }catch(err){ console.warn('[Cloud] indisponible :', err); B.cloudUnavailable(); return; }
+
+  const ROLE_OK = ['chef', 'equipe', 'moniteur'];
+  let unsubP = null, unsubF = null, startedFor = null, migrating = false;
+
+  window.BPM_CLOUD = {
+    save:   f  => cloud.saveFiche(f).catch(e => B.cloudError(e)),
+    del:    id => cloud.deleteFiche(id).catch(e => B.cloudError(e)),
+    login:  (email, pwd) => cloud.loginEmail(email, pwd),
+    signup: (email, pwd) => cloud.signupEmail(email, pwd),
+    google: () => cloud.loginGoogle(),
+    logout: () => cloud.logout()
+  };
+
+  function stop(){ if(unsubP){ unsubP(); unsubP = null; } if(unsubF){ unsubF(); unsubF = null; } startedFor = null; }
+
+  function startFiches(role){
+    if(unsubF) return;
+    unsubF = cloud.watchFiches(async arr => {
+      // Première connexion de cet appareil : envoyer les fiches locales (Chef) ou les mettre de côté (autres rôles)
+      if(!cloud.hasMigrated()){
+        if(migrating) return;
+        const local = B.getLocalFiches();
+        if(local.length){
+          if(role === 'chef'){
+            migrating = true;
+            try{
+              const ok = await cloud.migrateLocalToCloud(local);
+              if(ok === local.length) cloud.markMigrated();
+            } finally { migrating = false; }
+            return;               // le prochain instantané contiendra les fiches envoyées
+          }
+          B.backupLocal();
+        }
+        cloud.markMigrated();
+      }
+      B.setFiches(arr);
+    });
+  }
+
+  cloud.watchAuth(user => {
+    stop();
+    if(!user){ B.authState('login'); return; }
+    startedFor = user.uid;
+    unsubP = cloud.watchProfile(user.uid, prof => {
+      if(!prof || !ROLE_OK.includes(prof.role)){
+        if(unsubF){ unsubF(); unsubF = null; }
+        B.authState('pending', user);
+        return;
+      }
+      B.setRole(prof.role);
+      B.authState('ready', user);
+      startFiches(prof.role);
+    });
+  });
+})();
+</script>
+</body>
+</html>

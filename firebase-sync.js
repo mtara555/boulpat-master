@@ -25,32 +25,36 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
   getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   collection,
   doc,
   setDoc,
   deleteDoc,
   onSnapshot,
-  enableIndexedDbPersistence,
   serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // --- Initialisation ---
 export const app  = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db   = getFirestore(app);
+
+// Offline-first : cache IndexedDB persistant, partagé entre onglets.
+// (remplace enableIndexedDbPersistence, déprécié dans le SDK v10)
+export const db = (() => {
+  try{
+    return initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    });
+  }catch(err){
+    console.warn('[Firestore] cache persistant indisponible, mode standard :', err);
+    return getFirestore(app);
+  }
+})();
 
 // Session persistante : reste connecté après fermeture du navigateur
 setPersistence(auth, browserLocalPersistence).catch(() => {});
-
-// Offline-first : Firestore conserve un cache IndexedDB local
-// → l'app continue de fonctionner au fournil sans WiFi
-enableIndexedDbPersistence(db).catch(err => {
-  if (err.code === 'failed-precondition') {
-    console.warn('[Firestore] Multi-onglets : cache persistant limité');
-  } else if (err.code === 'unimplemented') {
-    console.warn('[Firestore] Navigateur sans support IndexedDB');
-  }
-});
 
 // ============================================================
 // AUTHENTIFICATION
@@ -90,8 +94,20 @@ export function watchFiches(cb){
 /** Enregistre (crée ou met à jour) une fiche dans le cloud */
 export async function saveFiche(f){
   const ref = doc(db, 'companies', COMPANY_ID, 'fiches', f.id);
-  const { id, ...data } = f;
+  const { id, _syncedAt, ...data } = f;   // _syncedAt est géré côté serveur
   await setDoc(ref, { ...data, _syncedAt: serverTimestamp() }, { merge: true });
+}
+
+/**
+ * Profil de l'utilisateur : companies/{COMPANY_ID}/users/{uid} -> { role: 'chef'|'equipe'|'moniteur' }
+ * Retourne null si le Chef BoulPat n'a pas encore activé le compte.
+ */
+export function watchProfile(uid, cb){
+  const ref = doc(db, 'companies', COMPANY_ID, 'users', uid);
+  return onSnapshot(ref,
+    snap => cb(snap.exists() ? snap.data() : null),
+    err => { console.error('[Firestore] watchProfile :', err); cb(null); }
+  );
 }
 
 /** Supprime une fiche du cloud */

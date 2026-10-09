@@ -4,11 +4,35 @@ service cloud.firestore {
 
     function isAuth() { return request.auth != null; }
 
+    // Profil de l'utilisateur dans cette entreprise : companies/{id}/users/{uid} -> { role }
+    function profilePath(companyId) {
+      return /databases/$(database)/documents/companies/$(companyId)/users/$(request.auth.uid);
+    }
+    function isMember(companyId) { return isAuth() && exists(profilePath(companyId)); }
+    function role(companyId)     { return get(profilePath(companyId)).data.role; }
+    function isChef(companyId)   { return isMember(companyId) && role(companyId) == 'chef'; }
+    function canExecute(companyId) {
+      return isMember(companyId) && role(companyId) in ['chef', 'equipe'];
+    }
+
+    // Utilisateurs : chacun lit son propre profil ; seul le Chef gère les rôles.
+    // (Le tout premier Chef se crée à la main dans la console Firebase.)
+    match /companies/{companyId}/users/{uid} {
+      allow read:  if isAuth() && (request.auth.uid == uid || isChef(companyId));
+      allow write: if isChef(companyId);
+    }
+
+    // Fiches techniques : tous les membres lisent, seul le Chef modifie
     match /companies/{companyId}/fiches/{ficheId} {
-      allow read:   if isAuth();
-      allow create: if isAuth();
-      allow update: if isAuth();
-      allow delete: if isAuth();
+      allow read:   if isMember(companyId);
+      allow create, update, delete: if isChef(companyId);
+    }
+
+    // Ordres de fabrication : le Chef et l'équipe créent / exécutent, le Chef supprime
+    match /companies/{companyId}/ofs/{ofId} {
+      allow read:   if isMember(companyId);
+      allow create, update: if canExecute(companyId);
+      allow delete: if isChef(companyId);
     }
 
     // Par défaut : tout refusé
