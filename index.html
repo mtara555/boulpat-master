@@ -221,6 +221,51 @@ th{background:var(--farine);font-size:.92rem}
   body{background:#fff}.shell{display:block}main{padding:0;max-width:none}
   .card{break-inside:avoid;border-color:#bbb}
 }
+.ofl{margin-bottom:12px}
+.ofh{display:flex;gap:14px;align-items:center}
+.oft{font-weight:800;font-size:1.3rem;background:var(--four);color:#fff;border-radius:10px;padding:6px 12px;font-variant-numeric:tabular-nums;flex:none}
+details summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600;color:var(--four)}
+.warn{background:#FBEFD3;border:1px solid var(--croute);border-radius:12px;padding:10px 14px;margin-bottom:12px}.warn ul{margin:6px 0 0;padding-inline-start:20px}
+.cmd-lignes{margin-bottom:12px}
+body.tfs .top,body.tfs .nav{display:none}
+body.tfs main{padding-bottom:24px}
+.tstrip{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#FCEFC7;border:1px solid var(--croute);border-radius:14px;padding:10px 14px;margin-bottom:14px}
+.tchip{display:inline-flex;gap:8px;align-items:center;background:#fff;border-radius:999px;padding:6px 12px}
+.tchip b{font-variant-numeric:tabular-nums;font-size:1.1rem}.tchip.expired{background:#F8D9D9;color:var(--off)}
+#alarm{position:fixed;inset:0;z-index:200;background:rgba(154,59,59,.96);display:grid;place-items:center;padding:20px;animation:alm 1s steps(2) infinite}
+#alarm[hidden]{display:none}
+.alarm-card{background:#fff;border-radius:22px;padding:28px 24px;max-width:420px;width:100%;text-align:center;display:grid;gap:10px}
+.alarm-ic{font-size:3.5rem}.alarm-card h2{margin:0;font-size:1.6rem}.alarm-card p{margin:0;font-size:1.15rem}
+@keyframes alm{50%{background:rgba(120,30,30,.96)}}
+@media print{#alarm{display:none!important}}
+
+.btn.small{min-height:40px;padding:6px 14px;font-size:.9rem}
+.stmedia{grid-column:1/-1;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.mthumb{width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--trait);display:inline-grid;place-items:center;background:var(--farine);font-size:.8rem}
+.smedia{display:block;max-width:100%;width:min(100%,420px);max-height:300px;object-fit:contain;border-radius:12px;margin-top:8px;background:#000}
+img.smedia{cursor:zoom-in;background:var(--farine)}
+.srcs{list-style:none;margin:0 0 12px;padding:0;display:grid;gap:8px}
+.srcs li{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.srcs a{color:var(--four);font-weight:600;word-break:break-all}
+#lb,#modal{position:fixed;inset:0;z-index:150;display:grid;place-items:center;padding:16px}
+#lb{background:rgba(0,0,0,.88);cursor:zoom-out}#lb img{max-width:100%;max-height:100%;border-radius:8px}
+#modal{background:rgba(29,42,46,.7)}
+#lb[hidden],#modal[hidden]{display:none}
+.qr-card{background:#fff;border-radius:20px;padding:24px;max-width:380px;width:100%;display:grid;gap:10px;text-align:center;justify-items:center}
+.qr-card h2{margin:0}.qrbig{width:min(260px,70vw)}.qrbig svg,.qrbox svg{width:100%;height:auto;display:block}
+.print-head{display:none}
+@page{size:A4;margin:14mm}
+@media print{
+  .print-head{display:flex;align-items:center;gap:14px;border-bottom:3px solid #0E5A57;padding-bottom:10px;margin-bottom:14px}
+  .print-head img{width:56px;height:56px;border-radius:50%}
+  .qrbox{margin-inline-start:auto;width:90px}
+  video.smedia{display:none}img.smedia{max-height:50mm;width:auto}
+  body{font-size:11pt}.card{box-shadow:none;margin-bottom:8px}
+  .chipb,.btn,.filebtn{display:none!important}
+  body:not(.pqr) #modal,#lb{display:none!important}
+  body.pqr .app,body.pqr #toast{display:none!important}
+  body.pqr #modal{position:static;background:#fff;display:grid}
+  body.pqr .qr-card .row{display:none}
+}
 </style>
 </head>
 <body>
@@ -239,6 +284,9 @@ th{background:var(--farine);font-size:.92rem}
   </div>
 </div>
 <div id="auth" role="dialog" aria-modal="true" aria-label="Connexion"></div>
+<div id="alarm" hidden role="alertdialog" aria-live="assertive"></div>
+<div id="lb" hidden></div>
+<div id="modal" hidden></div>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -435,6 +483,71 @@ Object.assign(T.ar,{
   err_perm:'العملية مرفوضة: صلاحيات غير كافية.', err_cloud:'تعذّرت المزامنة حاليًا.'
 });
 
+Object.assign(T.fr,{
+  e_fab:'Aucun ordre de fabrication', p_fab:"Saisissez la commande du jour pour générer le premier OF.",
+  new_of:'Nouvel ordre de fabrication', hist:'Historique', cmd_title:'Commande du jour', date_prod:'Date de production', debut:'Heure de début',
+  add_prod:'Ajouter un produit…', u_piece:'pièces', u_kg:'kg de pâte', u_plaque:'plaque(s) / recette de base', no_prod:"Aucune fiche de fabrication disponible. Créez d'abord une fiche avec ses ingrédients.",
+  calc:'Calculer les besoins globaux', of_title:'Ordre de fabrication', launch:'Ordre de lancement', needs:'Besoins globaux (liste de courses du labo)',
+  time_end:'Fin estimée', total_pate:'Total pâte', pieces_n:'Pièces', pcs:'pièces', products_n:'produits', detail:'Détail : ingrédients et étapes', cost_mat:'Coût des matières',
+  est_note:"Horaires estimés : lancement échelonné selon le temps de pousse. À ajuster selon votre matériel et votre équipe.",
+  save_of:"Enregistrer l'OF", of_saved:'OF enregistré', of_exists:'Un OF existe déjà pour cette date. Le remplacer ?', edit_cmd:'Modifier la commande',
+  confirm_del_of:'Supprimer cet OF définitivement ?', of_deleted:'OF supprimé', of_empty:'Aucun produit calculable.', pending_sync:'À synchroniser',
+  warn_skipped:'Produits non pris en compte :', ign_introuvable:'fiche introuvable', ign_quantite:'quantité nulle',
+  ign_poids_piece:'renseignez le poids de la pièce crue sur la fiche (ou commandez en kg)', ign_pate:'ingrédients manquants sur la fiche',
+  err_engine:'Moteur de calcul indisponible (connexion nécessaire une première fois).'
+});
+Object.assign(T.ar,{
+  e_fab:'لا توجد أوامر تصنيع', p_fab:'أدخل طلب اليوم لإنشاء أول أمر تصنيع.',
+  new_of:'أمر تصنيع جديد', hist:'السجل', cmd_title:'طلب اليوم', date_prod:'تاريخ الإنتاج', debut:'ساعة البدء',
+  add_prod:'إضافة منتج…', u_piece:'قطع', u_kg:'كلغ عجين', u_plaque:'صينية / وصفة أساسية', no_prod:'لا توجد بطاقة تصنيع. أنشئ أولًا بطاقة بمكوّناتها.',
+  calc:'احسب الاحتياجات الإجمالية', of_title:'أمر التصنيع', launch:'ترتيب الانطلاق', needs:'الاحتياجات الإجمالية (قائمة مشتريات المختبر)',
+  time_end:'النهاية المقدّرة', total_pate:'مجموع العجين', pieces_n:'القطع', pcs:'قطعة', products_n:'منتجات', detail:'التفاصيل: المكوّنات والخطوات', cost_mat:'تكلفة المواد',
+  est_note:'الأوقات تقديرية: انطلاق متدرّج حسب مدة التخمير. عدّلها وفق معداتك وفريقك.',
+  save_of:'حفظ أمر التصنيع', of_saved:'تم حفظ أمر التصنيع', of_exists:'يوجد أمر تصنيع لهذا التاريخ. هل تريد استبداله؟', edit_cmd:'تعديل الطلب',
+  confirm_del_of:'حذف أمر التصنيع نهائيًا؟', of_deleted:'تم حذف أمر التصنيع', of_empty:'لا يوجد منتج قابل للحساب.', pending_sync:'بانتظار المزامنة',
+  warn_skipped:'منتجات لم تُحتسب:', ign_introuvable:'البطاقة غير موجودة', ign_quantite:'الكمية صفر',
+  ign_poids_piece:'أدخل وزن القطعة نيئة في البطاقة (أو اطلب بالكيلوغرام)', ign_pate:'مكوّنات ناقصة في البطاقة',
+  err_engine:'محرك الحساب غير متاح (يلزم اتصال في المرة الأولى).'
+});
+
+Object.assign(T.fr,{
+  st6:'Fichier source, photos des étapes, PDF, QR code',
+  e_terrain:'Aucun ordre de fabrication à exécuter', p_terrain:"Créez d'abord l'OF du jour dans Fabrication.", go_fab:'Aller à Fabrication',
+  today:"Aujourd'hui", steps_n:'étapes', ingr_weigh:'Ingrédients à peser', fullscreen:'Plein écran', exit_fs:'Quitter le plein écran',
+  t_start:'Démarrer', t_pause:'Pause', t_resume:'Reprendre', t_reset:'Remise à zéro', planned:'Prévu à', step_done:'Étape réalisée',
+  running_timers:'Minuteurs en cours', time_up:'Temps écoulé', readonly_note:"Lecture seule : seuls le Chef et l'équipe peuvent valider les étapes."
+});
+Object.assign(T.ar,{
+  st6:'الملف الأصلي، صور الخطوات، PDF، رمز QR',
+  e_terrain:'لا يوجد أمر تصنيع للتنفيذ', p_terrain:'أنشئ أولًا أمر تصنيع اليوم في قسم الإنتاج.', go_fab:'الذهاب إلى الإنتاج',
+  today:'اليوم', steps_n:'خطوات', ingr_weigh:'المكوّنات للوزن', fullscreen:'ملء الشاشة', exit_fs:'إنهاء ملء الشاشة',
+  t_start:'ابدأ', t_pause:'إيقاف مؤقت', t_resume:'استئناف', t_reset:'إعادة', planned:'مقرّر في', step_done:'الخطوة منجزة',
+  running_timers:'المؤقتات الجارية', time_up:'انتهى الوقت', readonly_note:'قراءة فقط: الرئيس والفريق فقط يمكنهم تأكيد الخطوات.'
+});
+
+Object.assign(T.fr,{
+  print:'Imprimer / PDF', pdf:'Exporter PDF', qr_btn:'QR code',
+  pdf_hint:'Dans la fenêtre d’impression, choisissez « Enregistrer au format PDF ».',
+  print_fiche:'Fiche technique', qr_title:'QR code de la fiche', qr_copy:'Copier le lien', qr_share:'Partager', qr_print:"Imprimer l'étiquette", close:'Fermer', link_copied:'Lien copié',
+  s_src:'Fichier source du moniteur', src_hint:'PDF, Excel ou Word reçu du moniteur, rattaché à cette fiche (25 Mo maximum).', src_add:'Ajouter un fichier',
+  media_add:'Photo / vidéo', media_change:'Changer', media_del:'Retirer', video:'vidéo',
+  err_big:'Fichier trop volumineux (25 Mo maximum).', err_need_cloud:'Connexion internet et compte connecté nécessaires pour envoyer ce fichier.',
+  err_doc_big:'Fiche trop volumineuse : retirez ou réduisez des photos.',
+  st_unauth:'Envoi refusé : seul le Chef peut ajouter des fichiers (vérifiez les règles Storage).', st_off:"Cloud Storage n'est pas activé sur ce projet Firebase.",
+  v2_note:'Prévu en V2 : HACCP (températures, nettoyage), traçabilité des lots, étiquettes allergènes.'
+});
+Object.assign(T.ar,{
+  print:'طباعة / PDF', pdf:'تصدير PDF', qr_btn:'رمز QR',
+  pdf_hint:'في نافذة الطباعة اختر «حفظ بصيغة PDF».',
+  print_fiche:'البطاقة التقنية', qr_title:'رمز QR للبطاقة', qr_copy:'نسخ الرابط', qr_share:'مشاركة', qr_print:'طباعة الملصق', close:'إغلاق', link_copied:'تم نسخ الرابط',
+  s_src:'الملف الأصلي من المراقب', src_hint:'ملف PDF أو Excel أو Word مستلم من المراقب ومرتبط بهذه البطاقة (25 ميغابايت كحد أقصى).', src_add:'إضافة ملف',
+  media_add:'صورة / فيديو', media_change:'تغيير', media_del:'إزالة', video:'فيديو',
+  err_big:'الملف كبير جدًا (25 ميغابايت كحد أقصى).', err_need_cloud:'يلزم اتصال بالإنترنت وحساب مسجّل لإرسال هذا الملف.',
+  err_doc_big:'البطاقة كبيرة جدًا: أزل أو قلّص بعض الصور.',
+  st_unauth:'تم رفض الإرسال: الرئيس فقط يمكنه إضافة الملفات (تحقق من قواعد Storage).', st_off:'خدمة Cloud Storage غير مفعّلة في مشروع Firebase.',
+  v2_note:'مبرمج في النسخة الثانية: HACCP (درجات الحرارة، التنظيف)، تتبّع الدفعات، ملصقات مسببات الحساسية.'
+});
+
 /* ---- Droits ---- */
 const FAMILIES = [
   { id:'boul_fab',  key:'fab'    }, { id:'boul_neg',  key:'negoce' }, { id:'viennois', key:'vienn' },
@@ -456,6 +569,8 @@ const S = {
   lang: store.get('lang','fr'), role: store.get('role','chef'), view:'home',
   fiches: store.get('fiches',[]), fv:{mode:'list'}, draft:null, dirty:false,
   q:'', ffam:'', fst:'',
+  ofs: store.get('ofs',[]), of:{mode:'list'}, cmd:null, ofPrev:null,
+  tr:{mode:'list'}, timers: store.get('timers',{}), fs:false,
   auth:{state:'loading', user:null, err:'', mode:'login', email:'', locked:false}
 };
 const t = k => (T[S.lang][k] != null ? T[S.lang][k] : (T.fr[k] != null ? T.fr[k] : k));
@@ -601,19 +716,20 @@ function detailHTML(f){
     <section class="card"><h2>${t('s_proc')}</h2>
       ${(f.etapes||[]).length ? `<ol class="proc">${f.etapes.map(e => `<li><strong>${t('tp_'+e.type)}</strong>
         <span class="muted">${e.duree ? fmt(num(e.duree),0,0)+' '+t('min') : ''}${e.temp ? ' · ' + esc(e.temp) + ' °C' : ''}</span>
-        <div>${esc(e.desc)}</div></li>`).join('')}</ol><p class="muted">${t('total_time')} : ${fmtTime(tl(f))}</p>` : '<p class="muted">—</p>'}
+        <div>${esc(e.desc)}</div>${mediaHTML(e.media)}</li>`).join('')}</ol><p class="muted">${t('total_time')} : ${fmtTime(tl(f))}</p>` : '<p class="muted">—</p>'}
     </section>
     <section class="card"><h2>${t('s_mat')} / ${t('s_cons')}</h2><dl class="kv">
       <div><dt>${t('materiel')}</dt><dd>${esc(f.materiel)||'—'}</dd></div>
       <div><dt>${t('dlc')}</dt><dd>${esc(f.dlc)||'—'}</dd></div>
       <div><dt>${t('stockage')}</dt><dd>${esc(f.stockage)||'—'}</dd></div>
       <div><dt>${t('congel')}</dt><dd>${esc(f.congel)||'—'}</dd></div></dl></section>`;
-  return `<div class="noprint row" style="margin-bottom:14px">
+  return `${printHead(t('print_fiche') + ' — ' + f.code, true)}<div class="noprint row" style="margin-bottom:14px">
       <button class="btn ghost" data-act="back">${t('back')}</button>
       <span style="margin-inline-start:auto"></span>
       ${can('write') ? `<button class="btn" data-act="edit" data-id="${f.id}">${t('edit')}</button>
         <button class="btn ghost" data-act="dup" data-id="${f.id}">${t('dup')}</button>` : ''}
-      <button class="btn ghost" data-act="print">${t('print')}</button>
+      <button class="btn ghost" data-act="pdf">${t('pdf')}</button>
+      <button class="btn ghost" data-act="qr">${t('qr_btn')}</button>
       ${can('delete') ? `<button class="btn danger" data-act="del" data-id="${f.id}">${t('del')}</button>` : ''}</div>
     <section class="card head">
       ${f.photo ? `<img class="big" src="${f.photo}" alt="">` : ''}
@@ -621,6 +737,7 @@ function detailHTML(f){
         <p><span class="tag">${esc(f.code)}</span><span class="tag">${t('fam_'+famKey(f.famille))}</span>${statutHTML(f.statut)}</p>
         <p class="muted">${t('maj')} : ${f.maj ? new Date(f.maj).toLocaleDateString(S.lang==='ar'?'ar-MA-u-nu-latn':'fr-FR') : '—'}</p></div></section>
     ${rec}
+    ${sourcesView(f)}
     <section class="card"><h2>${t('s_all')}</h2>${al.size ? `<p>${tagsHTML(al)}</p>` : `<p class="muted">${t('no_all')}</p>`}</section>
     ${cost ? `<section class="card"><h2>${t('s_calc')}</h2>${resultsRows(f,c)}</section>` : ''}`;
 }
@@ -645,8 +762,111 @@ function stepRow(e, k, n){
     <input class="q" inputmode="decimal" placeholder="${t('temp')}" aria-label="${t('temp')}" data-s="${k}" data-k="temp" value="${esc(e.temp)}">
     <span class="mv"><button data-act="up-step" data-idx="${k}" aria-label="↑" ${k===0?'disabled':''}>↑</button>
     <button data-act="down-step" data-idx="${k}" aria-label="↓" ${k===n-1?'disabled':''}>↓</button>
-    <button class="x" data-act="del-step" data-idx="${k}" aria-label="${t('del')}">×</button></span></div>`;
+    <button class="x" data-act="del-step" data-idx="${k}" aria-label="${t('del')}">×</button></span>${mediaCtl(e,k)}</div>`;
 }
+function mediaCtl(e, k){
+  const m = e.media;
+  const prev = m ? (m.type==='video' ? `<span class="mthumb vid">▶ ${t('video')}</span>` : `<img class="mthumb" src="${m.src}" alt="">`) : '';
+  return `<div class="stmedia">${prev}
+    <label class="btn ghost small filebtn">${m ? t('media_change') : t('media_add')}<input type="file" data-media="${k}" accept="image/*,video/*" hidden></label>
+    ${m ? `<button class="btn ghost small" data-act="media-del" data-idx="${k}" type="button">${t('media_del')}</button>` : ''}
+    <span class="muted" id="mprog-${k}"></span></div>`;
+}
+const mediaHTML = m => !m ? '' : m.type==='video'
+  ? `<video class="smedia" src="${esc(m.url)}" controls preload="none" playsinline></video>`
+  : `<img class="smedia" src="${m.src}" alt="" data-lb="1">`;
+const stepMedia = (l, i) => { const f = S.fiches.find(x => x.id===l.ficheId), fe = f && f.etapes && f.etapes[i]; return fe && l.etapes[i] && fe.type===l.etapes[i].type ? fe.media : null; };
+const fmtSize = n => !n ? '' : n > 1048576 ? (n/1048576).toFixed(1).replace('.',',') + ' Mo' : Math.max(1, Math.round(n/1024)) + ' Ko';
+const safeName = s => String(s||'fichier').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9._-]+/g,'_').slice(-60);
+function compressImage(file, max, q){
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => { const r = Math.min(1, max / Math.max(img.width, img.height));
+      const cv = document.createElement('canvas'); cv.width = Math.round(img.width*r); cv.height = Math.round(img.height*r);
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height); URL.revokeObjectURL(url); res(cv.toDataURL('image/jpeg', q)); };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('image')); };
+    img.src = url;
+  });
+}
+function storageErr(e){
+  const c = (e && e.code) || '';
+  if(c==='storage/unauthorized') return t('st_unauth');
+  if(/bucket-not-found|project-not-found|unknown/.test(c)) return t('st_off');
+  return t('err_cloud');
+}
+async function handleStepMedia(k, file){
+  const d = S.draft; if(!file || !d) return; const e = d.etapes[k]; if(!e) return;
+  if(file.type.startsWith('image/')){
+    try{ e.media = {type:'image', src: await compressImage(file, 640, .7)}; S.dirty = true; render(); }catch(err){ toast(t('err_cloud')); }
+    return;
+  }
+  if(!file.type.startsWith('video/')) return;
+  if(file.size > 25*1048576){ toast(t('err_big')); return; }
+  if(!window.BPM_CLOUD || !navigator.onLine){ toast(t('err_need_cloud')); return; }
+  const prog = $('#mprog-' + k);
+  try{
+    const r = await window.BPM_CLOUD.upload('fiches/' + d.id + '/etapes/' + Date.now() + '-' + safeName(file.name), file, p => { const el = $('#mprog-' + k); if(el) el.textContent = Math.round(p*100) + ' %'; });
+    if(e.media && e.media.path) (d._rm = d._rm || []).push(e.media.path);
+    e.media = {type:'video', url:r.url, path:r.path}; S.dirty = true; render();
+  }catch(err){ toast(storageErr(err)); if(prog) prog.textContent = ''; }
+}
+async function handleSource(file){
+  const d = S.draft; if(!file || !d) return;
+  if(file.size > 25*1048576){ toast(t('err_big')); return; }
+  if(!window.BPM_CLOUD || !navigator.onLine){ toast(t('err_need_cloud')); return; }
+  try{
+    const r = await window.BPM_CLOUD.upload('fiches/' + d.id + '/source/' + Date.now() + '-' + safeName(file.name), file, p => { const el = $('#srcprog'); if(el) el.textContent = Math.round(p*100) + ' %'; });
+    (d.sources = d.sources || []).push({nom:file.name, url:r.url, path:r.path, type:file.type, taille:file.size, date:new Date().toISOString()});
+    S.dirty = true; render();
+  }catch(err){ toast(storageErr(err)); const el = $('#srcprog'); if(el) el.textContent = ''; }
+}
+function sourcesEdit(d){
+  return `<section class="card"><h2>${t('s_src')}</h2><p class="muted">${t('src_hint')}</p>
+    <ul class="srcs">${(d.sources||[]).map((s,k) => `<li><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.nom)}</a>
+      <span class="muted">${fmtSize(s.taille)}</span><button class="x" data-act="src-del" data-idx="${k}" type="button" aria-label="${t('del')}">×</button></li>`).join('')}</ul>
+    <label class="btn ghost filebtn">${t('src_add')}<input type="file" id="srcfile" accept=".pdf,.xls,.xlsx,.xlsm,.csv,.doc,.docx,.odt,.ods,image/*" hidden></label>
+    <span class="muted" id="srcprog"></span></section>`;
+}
+const sourcesView = f => (f.sources||[]).length ? `<section class="card noprint"><h2>${t('s_src')}</h2><ul class="srcs">${f.sources.map(s =>
+  `<li><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.nom)}</a> <span class="muted">${fmtSize(s.taille)}</span></li>`).join('')}</ul></section>` : '';
+
+/* QR code, lien de partage, impression PDF */
+let _qr = null;
+async function qrSVG(text){
+  _qr = _qr || await import('./qr.js');
+  const q = _qr.default(0, 'M'); q.addData(text); q.make();
+  return q.createSvgTag({cellSize:4, margin:0, scalable:true});
+}
+const ficheLink = id => location.origin + location.pathname + '#fiche=' + encodeURIComponent(id);
+const printHead = (title, withQR) => `<div class="print-head"><img src="logo.png" alt=""><div><strong>BOULPAT MASTER · La Pâtisserie</strong><br><span>${esc(title)}</span></div>${withQR ? '<div class="qrbox" id="qrprint"></div>' : ''}</div>`;
+async function printFiche(id){
+  try{ const el = $('#qrprint'); if(el) el.innerHTML = await qrSVG(ficheLink(id)); }catch(e){}
+  toast(t('pdf_hint')); setTimeout(() => window.print(), 250);
+}
+async function showQR(id){
+  const f = S.fiches.find(x => x.id===id); if(!f) return;
+  const link = ficheLink(id); let svg = '';
+  try{ svg = await qrSVG(link); }catch(e){ toast(t('err_engine')); return; }
+  const m = $('#modal'); m.hidden = false; m.dataset.link = link; m.dataset.name = fname(f);
+  m.innerHTML = `<div class="qr-card" role="dialog" aria-modal="true"><h2>${t('qr_title')}</h2><div class="qrbig">${svg}</div>
+    <strong>${esc(fname(f))}</strong><span class="muted">${esc(f.code)}</span><code class="uid">${esc(link)}</code>
+    <div class="row" style="justify-content:center"><button class="btn ghost" data-m="copy" type="button">${t('qr_copy')}</button>
+    ${navigator.share ? `<button class="btn ghost" data-m="share" type="button">${t('qr_share')}</button>` : ''}
+    <button class="btn ghost" data-m="print" type="button">${t('qr_print')}</button><button class="btn" data-m="close" type="button">${t('close')}</button></div></div>`;
+}
+function closeModal(){ const m = $('#modal'); m.hidden = true; m.innerHTML = ''; }
+$('#modal').addEventListener('click', async e => {
+  const m = $('#modal'), b = e.target.closest('[data-m]');
+  if(!b){ if(e.target===m) closeModal(); return; }
+  if(b.dataset.m==='close') closeModal();
+  else if(b.dataset.m==='copy'){ try{ await navigator.clipboard.writeText(m.dataset.link); toast(t('link_copied')); }catch(err){} }
+  else if(b.dataset.m==='share'){ try{ await navigator.share({title:m.dataset.name, url:m.dataset.link}); }catch(err){} }
+  else if(b.dataset.m==='print'){ document.body.classList.add('pqr'); window.print(); }
+});
+window.addEventListener('afterprint', () => document.body.classList.remove('pqr'));
+$('#lb').addEventListener('click', () => { $('#lb').hidden = true; $('#lb').innerHTML = ''; });
+$('#view').addEventListener('click', e => { const im = e.target.closest('img[data-lb]'); if(im){ const lb = $('#lb'); lb.innerHTML = '<img src="' + im.src + '" alt="">'; lb.hidden = false; } });
+
 function rendHTML(d){
   if(isNegoce(d)) return '';
   const c = calc(d);
@@ -698,6 +918,7 @@ function editorHTML(){
     ${fl(t('dlc'), inp('dlc', d.dlc, 'inputmode="numeric"'))}
     ${fl(t('stockage'), inp('stockage', d.stockage))}
     ${fl(t('congel'), inp('congel', d.congel))}</div></section>`}
+  ${sourcesEdit(d)}
   <section class="card"><h2>${t('s_all')}</h2><p class="muted">${t('all_hint')}</p><div class="chips" id="allerg">${allergHTML(d)}</div></section>
   <section class="card"><h2>${t('s_calc')}</h2><div class="form">
     ${fl(t('marge_c'), inp('margeCible', d.margeCible, 'inputmode="decimal"'))}
@@ -724,10 +945,10 @@ const VIEWS = {
     const count = id => S.fiches.filter(f => f.famille===id).length;
     const fam = FAMILIES.map(f => `<button class="card famc" data-k="${f.key}" data-fam="${f.id}">
       <h3>${t('fam_'+f.key)}</h3><span class="n">${count(f.id)}</span><small>${t('fiches_n')}</small><span>${t('d_'+f.key)}</span></button>`).join('');
-    const steps = [1,2,3,4,5,6].map(n => `<li class="${n<=3?'done':n===4?'now':''}"><span class="b">${n<=3?'✓':n}</span>
-      <div><strong>${t('st'+n)}</strong>${n===4?`<span>${t('now')}</span>`:''}</div></li>`).join('');
+    const steps = [1,2,3,4,5,6].map(n => `<li class="done"><span class="b">✓</span>
+      <div><strong>${t('st'+n)}</strong></div></li>`).join('');
     return `<h1>${t('h_home')}</h1><p class="sub">${t('s_home')}</p><div class="fam">${fam}</div>
-      <h2>${t('road')}</h2><ol class="steps">${steps}</ol>`;
+      <h2>${t('road')}</h2><ol class="steps">${steps}</ol><p class="muted">${t('v2_note')}</p>`;
   },
   fiches(){
     if(S.fv.mode==='edit' && S.draft) return editorHTML();
@@ -738,8 +959,8 @@ const VIEWS = {
     }
     return listPage();
   },
-  fab(){ return `<h1>${t('h_fab')}</h1><p class="sub">${t('s_fab')}</p><div class="empty"><strong>${t('e_fab')}</strong><p>${t('p_fab')}</p></div>`; },
-  terrain(){ return `<h1>${t('h_terrain')}</h1><p class="sub">${t('s_terrain')}</p><div class="empty"><strong>${t('e_terrain')}</strong><p>${t('p_terrain')}</p></div>`; },
+  fab(){ return fabView(); },
+  terrain(){ return terrainView(); },
   set(){
     const mark = v => v ? '<span class="yes">✓</span>' : '<span class="no">—</span>';
     const rows = Object.keys(ROLES).map(r => { const p = ROLES[r];
@@ -759,15 +980,17 @@ function render(){
   $('#role').innerHTML = Object.keys(ROLES).map(r => `<option value="${r}" ${S.role===r?'selected':''}>${t('r_'+r)}</option>`).join('');
   $('#roleLbl').textContent = t('role');
   $('#langBtn').textContent = S.lang==='fr' ? 'العربية' : 'Français';
+  document.body.classList.toggle('tfs', !!(S.fs && S.view==='terrain' && S.tr.mode==='run'));
+  keepAwake(S.view==='terrain' && S.tr.mode==='run');
   netStatus(); afterEditorRender(); updateAuthUI();
   const l2 = $('#lang2'); if(l2) l2.onchange = e => setLang(e.target.value);
 }
 function setLang(l){ S.lang = l; store.set('lang', l); render(); }
 const guard = () => !S.dirty || confirm(t('discard'));
-function leaveEditor(){ S.dirty = false; S.draft = null; }
+function leaveEditor(){ S.dirty = false; S.draft = null; S.cmd = null; S.ofPrev = null; }
 function go(v){
   if(!guard()) return;
-  leaveEditor(); S.fv = {mode:'list'}; S.view = v; location.hash = v; render(); window.scrollTo(0,0);
+  leaveEditor(); S.fv = {mode:'list'}; S.of = {mode:'list'}; S.tr = {mode:'list'}; leaveRun(); S.view = v; location.hash = v; render(); window.scrollTo(0,0);
 }
 function netStatus(){
   const on = navigator.onLine;
@@ -780,12 +1003,15 @@ function startEdit(f){ S.draft = f ? clone(f) : newFiche(S.ffam || 'boul_fab'); 
 function saveDraft(){
   const d = S.draft;
   if(!d.nomFr.trim()){ toast(t('err_nom')); const el = document.querySelector('[data-f="nomFr"]'); if(el) el.focus(); return; }
+  if(JSON.stringify(d).length > 900000){ toast(t('err_doc_big')); return; }
+  const removed = d._rm || []; delete d._rm;
   if(!String(d.code).trim()) d.code = nextCode(S.fiches, d.famille);
   d.maj = new Date().toISOString();
   d.ingredients = (d.ingredients||[]).filter(i => String(i.nom).trim() || num(i.qte) > 0);
   const k = S.fiches.findIndex(x => x.id===d.id);
   if(k>=0) S.fiches[k] = d; else S.fiches.push(d);
   const okLocal = persist(); cloudSave(d);
+  removed.forEach(p => { if(window.BPM_CLOUD && window.BPM_CLOUD.removeFile) window.BPM_CLOUD.removeFile(p); });
   if(!okLocal && !window.BPM_CLOUD) return;
   const id = d.id; leaveEditor(); S.fv = {mode:'view', id}; render(); window.scrollTo(0,0); toast(t('saved'));
 }
@@ -892,8 +1118,8 @@ $('#auth').addEventListener('click', async e => {
 });
 function logoutNow(){
   if(!window.BPM_CLOUD) return;
-  try{ localStorage.removeItem('bpm.fiches'); }catch(e){}
-  S.fiches = []; leaveEditor(); S.fv = {mode:'list'};
+  try{ localStorage.removeItem('bpm.fiches'); localStorage.removeItem('bpm.ofs'); localStorage.removeItem('bpm.timers'); }catch(e){}
+  S.fiches = []; S.ofs = []; S.timers = {}; leaveEditor(); S.fv = {mode:'list'};
   window.BPM_CLOUD.logout();
 }
 $('#authBtn').addEventListener('click', () => { if(confirm(t('confirm_logout'))) logoutNow(); });
@@ -910,13 +1136,21 @@ window.BPM = {
     if(was !== state) render(); else updateAuthUI();
   },
   setRole(r){ if(ROLES[r]){ store.set('profileRole', r); if(S.role !== r){ S.role = r; if(S.auth.state==='ready') render(); } } },
+  setOFs(arr){
+    const pend = S.ofs.filter(o => o._pending && !arr.some(x => x.id===o.id));
+    pend.forEach(o => { const c = clone(o); delete c._pending; cloudSaveOF(c); });
+    S.ofs = arr.concat(pend); persistOFs();
+    const ae = document.activeElement, typing = ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName);
+    if(((S.view==='fab' && S.of.mode==='list') || (S.view==='terrain' && S.tr.mode!=='run')) && !typing) render();
+  },
   getLocalFiches(){ return store.get('fiches', []); },
   backupLocal(){ try{ localStorage.setItem('bpm.fiches.backup', localStorage.getItem('bpm.fiches') || '[]'); }catch(e){} },
   setFiches(arr){
     S.fiches = arr;
     try{ localStorage.setItem('bpm.fiches', JSON.stringify(arr)); }catch(e){}
     const ae = document.activeElement, typing = ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName);
-    if((S.view==='fiches' && S.fv.mode==='edit') || typing){ const l = $('#list'); if(l) l.innerHTML = listHTML(); }
+    if(applyPending()) render();
+    else if((S.view==='fiches' && S.fv.mode==='edit') || typing){ const l = $('#list'); if(l) l.innerHTML = listHTML(); }
     else render();
   },
   cloudUnavailable(){
@@ -926,11 +1160,328 @@ window.BPM = {
   cloudError(e){ toast(e && e.code==='permission-denied' ? t('err_perm') : t('err_cloud')); console.warn('[Cloud]', e); }
 };
 
+/* ---- Fabrication : commandes → Ordre de Fabrication ---- */
+const loadEngine = async () => window.OF_ENGINE || (window.OF_ENGINE = await import('./of-engine.js'));
+const todayISO = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
+const dayFmt = iso => { const p = String(iso||todayISO()).split('-').map(Number);
+  return new Date(p[0], p[1]-1, p[2]).toLocaleDateString(S.lang==='ar' ? 'ar-MA-u-nu-latn' : 'fr-FR', {weekday:'long', day:'numeric', month:'long', year:'numeric'}); };
+const toMin = v => { const m = /^(\d{1,2}):(\d{2})$/.exec(v||''); return m ? (+m[1])*60 + (+m[2]) : 6*60; };
+const hhmm = mn => { const x = Math.round(mn); return String(Math.floor(x/60)%24).padStart(2,'0') + ':' + String(x%60).padStart(2,'0'); };
+const fq = (g, liq) => g >= 1000 ? fmt(g/1000,0,1) + ' ' + (liq?'L':'kg') : fmt(g,0,0) + ' ' + (liq?'ml':'g');
+const producible = () => S.fiches.filter(f => !isNegoce(f) && f.statut!=='archivee' && (f.ingredients||[]).some(i => num(i.qte) > 0))
+  .sort((a,b) => fname(a).localeCompare(fname(b), S.lang));
+const persistOFs = () => { try{ localStorage.setItem('bpm.ofs', JSON.stringify(S.ofs)); }catch(e){} };
+const cloudSaveOF = o => { if(window.BPM_CLOUD) window.BPM_CLOUD.saveOF(clone(o)); };
+const cloudDelOF  = id => { if(window.BPM_CLOUD) window.BPM_CLOUD.delOF(id); };
+const lname = l => S.lang==='ar' ? (l.nomAr || l.nomFr) : l.nomFr;
+
+function computeOF(){
+  const E = window.OF_ENGINE, c = S.cmd; if(!E || !c) return null;
+  const cmds = c.lignes.map(l => ({ficheId:l.ficheId, quantite:num(l.quantite), unite:l.unite}));
+  const of = E.genererOF(cmds, S.fiches, {debutMin: toMin(c.debut), jour: c.jour});
+  const al = new Set();
+  of.lignes.forEach(l => { const f = S.fiches.find(x => x.id===l.ficheId); if(f) finalAllerg(f).forEach(a => al.add(a)); });
+  of.allergenes = [...al];
+  of.commandes = c.lignes.map(l => ({ficheId:l.ficheId, quantite:l.quantite, unite:l.unite}));
+  of.auteur = S.auth.user ? String(S.auth.user.email||'') : '';
+  of.etat = 'planifie';
+  return of;
+}
+function ofHTML(o){
+  const cost = can('cout');
+  const pieces = o.lignes.reduce((s,l) => s + l.pieces, 0), pate = o.lignes.reduce((s,l) => s + l.pate_g, 0);
+  const kv = `<dl class="kv">
+    <div><dt>${t('date_prod')}</dt><dd>${esc(dayFmt(o.jour))}</dd></div>
+    <div><dt>${t('debut')}</dt><dd>${hhmm(o.debutMin)}</dd></div>
+    <div><dt>${t('time_end')}</dt><dd>${hhmm(o.finEstimee)}</dd></div>
+    <div><dt>${t('total_pate')}</dt><dd>${fq(pate,false)}</dd></div>
+    <div><dt>${t('pieces_n')}</dt><dd>${fmt(pieces,0,0)}</dd></div>
+    ${cost ? `<div><dt>${t('cost_mat')}</dt><dd>${money(o.coutTotal)}</dd></div>` : ''}</dl>`;
+  const lines = o.lignes.map(l => `<article class="card ofl">
+    <div class="ofh"><span class="oft">${hhmm(l.heureLancement)}</span>
+      <div><strong>${esc(lname(l))}</strong><div class="muted">${fmt(l.quantite,0,2)} ${t('u_'+l.unite)} · ${fmt(l.pieces,0,0)} ${t('pcs')} · ${fq(l.pate_g,false)}${cost ? ' · ' + money(l.cout) : ''}</div></div></div>
+    <details><summary>${t('detail')}</summary>
+      <div class="scroll"><table><thead><tr><th>${t('ing')}</th><th>${t('qty')}</th></tr></thead><tbody>
+        ${l.ingredients.map(i => `<tr><td>${esc(i.nom)}</td><td>${fq(i.qte_g, i.liq)}</td></tr>`).join('')}</tbody></table></div>
+      ${l.etapes.length ? `<ol class="proc">${l.etapes.map(e => `<li><strong>${hhmm(e.debut)}</strong> · ${t('tp_'+e.type)}
+        <span class="muted">${e.duree ? fmt(e.duree,0,0) + ' ' + t('min') : ''}${e.temp ? ' · ' + esc(e.temp) + ' °C' : ''}</span>${e.desc ? `<div>${esc(e.desc)}</div>` : ''}</li>`).join('')}</ol>` : ''}
+    </details></article>`).join('');
+  const needs = `<div class="scroll"><table><thead><tr><th>${t('ing')}</th><th>${t('qty')}</th>${cost?`<th>${t('line')}</th>`:''}</tr></thead><tbody>
+    ${o.besoinsGlobaux.map(b => `<tr><td>${esc(b.nom)}</td><td><strong>${fmt(b.qte,0,1)} ${b.unite}</strong></td>${cost?`<td>${money(b.cout)}</td>`:''}</tr>`).join('')}</tbody></table></div>`;
+  return `${kv}<h2>${t('launch')}</h2>${lines}<p class="muted">${t('est_note')}</p>
+    <h2>${t('needs')}</h2>${needs}
+    <h2>${t('s_all')}</h2>${(o.allergenes||[]).length ? `<p>${tagsHTML(new Set(o.allergenes))}</p>` : `<p class="muted">${t('no_all')}</p>`}`;
+}
+function previewHTML(){
+  const o = S.ofPrev; if(!S.cmd || !S.cmd.show || !o) return '';
+  const warn = (o.ignores||[]).length ? `<div class="warn"><strong>${t('warn_skipped')}</strong><ul>${o.ignores.map(i =>
+    `<li>${esc(i.nom || '?')} — ${t('ign_'+i.raison)}</li>`).join('')}</ul></div>` : '';
+  if(!o.lignes.length) return warn || `<p class="muted">${t('of_empty')}</p>`;
+  return `${warn}<h2>${t('of_title')}</h2>${ofHTML(o)}
+    <div class="row noprint" style="margin-top:16px"><button class="btn" data-act="of-save">${t('save_of')}</button>
+    <button class="btn ghost" data-act="print">${t('print')}</button></div>`;
+}
+function refreshOF(){
+  if(!S.cmd || !S.cmd.show) return;
+  S.ofPrev = computeOF();
+  const el = $('#ofpreview'); if(el) el.innerHTML = previewHTML();
+}
+function histHTML(){
+  if(!S.ofs.length) return `<div class="empty"><strong>${t('e_fab')}</strong><p>${t('p_fab')}</p></div>`;
+  const arr = [...S.ofs].sort((a,b) => String(b.jour).localeCompare(String(a.jour)));
+  return `<div class="grid">${arr.map(o => {
+    const pieces = (o.lignes||[]).reduce((s,l) => s + l.pieces, 0);
+    return `<button class="fcard" data-act="of-open" data-id="${esc(o.id)}"><span class="ft"><strong>${esc(dayFmt(o.jour))}</strong>
+      <small>${(o.lignes||[]).length} ${t('products_n')} · ${fmt(pieces,0,0)} ${t('pcs')} · ${hhmm(o.debutMin)} → ${hhmm(o.finEstimee)}</small></span>
+      ${o._pending ? `<span class="badge s-test">${t('pending_sync')}</span>` : ''}</button>`; }).join('')}</div>`;
+}
+function fabList(){
+  return `<h1>${t('h_fab')}</h1><p class="sub">${t('s_fab')}</p>
+    ${can('exec') ? `<div class="row" style="margin-bottom:6px"><button class="btn" data-act="of-new">${t('new_of')}</button></div>` : ''}
+    <h2>${t('hist')}</h2>${histHTML()}`;
+}
+function fabEditor(){
+  const c = S.cmd, fiches = producible();
+  if(c.show && window.OF_ENGINE) S.ofPrev = computeOF();
+  const rows = c.lignes.map((l,k) => { const f = S.fiches.find(x => x.id===l.ficheId);
+    return `<div class="cmd-ligne"><span class="cmd-nom">${esc(f ? fname(f) : '?')}</span>
+      <input class="cmd-q" inputmode="decimal" placeholder="${t('qty')}" aria-label="${t('qty')}" data-c="${k}" data-k="quantite" value="${esc(l.quantite)}">
+      <select class="cmd-u" aria-label="${t('unit')}" data-c="${k}" data-k="unite">${['piece','kg','plaque'].map(u => opt(u, t('u_'+u), l.unite)).join('')}</select>
+      <button class="x" data-act="of-del-line" data-idx="${k}" aria-label="${t('del')}">×</button></div>`; }).join('');
+  return `<h1>${t('cmd_title')}</h1><p class="sub"> </p>
+    <div class="row noprint" style="margin-bottom:14px"><button class="btn ghost" data-act="of-back">${t('back')}</button></div>
+    <section class="card"><div class="form">
+      ${fl(t('date_prod'), `<input type="date" data-cf="jour" value="${esc(c.jour)}">`)}
+      ${fl(t('debut'), `<input type="time" data-cf="debut" value="${esc(c.debut)}">`)}</div>
+      ${fiches.length ? `<div class="cmd-lignes">${rows}</div>
+        <div class="fl"><select id="addprod" aria-label="${t('add_prod')}"><option value="">${t('add_prod')}</option>
+        ${fiches.map(f => opt(f.id, fname(f) + ' (' + f.code + ')', '')).join('')}</select></div>`
+        : `<p class="muted">${t('no_prod')}</p>`}
+      <div class="row" style="margin-top:14px"><button class="btn" data-act="of-calc" ${c.lignes.length ? '' : 'disabled'}>${t('calc')}</button></div>
+    </section>
+    <div id="ofpreview">${previewHTML()}</div>`;
+}
+function ofPage(o){
+  return `${printHead(t('of_title') + ' — ' + dayFmt(o.jour), false)}<div class="noprint row" style="margin-bottom:14px"><button class="btn ghost" data-act="of-back">${t('back')}</button>
+      <span style="margin-inline-start:auto"></span>
+      ${can('exec') ? `<button class="btn" data-act="of-edit" data-id="${esc(o.id)}">${t('edit_cmd')}</button>` : ''}
+      <button class="btn ghost" data-act="print">${t('print')}</button>
+      ${can('delete') ? `<button class="btn danger" data-act="of-del" data-id="${esc(o.id)}">${t('del')}</button>` : ''}</div>
+    <h1>${t('of_title')}</h1><p class="sub">${esc(dayFmt(o.jour))}</p>${ofHTML(o)}`;
+}
+function fabView(){
+  const m = S.of.mode;
+  if(m==='new' && S.cmd) return fabEditor();
+  if(m==='view'){ const o = S.ofs.find(x => x.id===S.of.id); if(o) return ofPage(o); }
+  S.of = {mode:'list'}; return fabList();
+}
+async function openCalc(){
+  try{ await loadEngine(); }catch(e){ toast(t('err_engine')); return; }
+  S.cmd.show = true; refreshOF();
+  const el = $('#ofpreview'); if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+}
+function saveOF(){
+  const o = S.ofPrev; if(!o || !o.lignes.length) return;
+  if(S.ofs.some(x => x.id===o.id) && !confirm(t('of_exists'))) return;
+  const rec = clone(o); if(!window.BPM_CLOUD) rec._pending = true;
+  const old = S.ofs.find(x => x.id===rec.id); if(old && old.progres) rec.progres = clone(old.progres);
+  S.ofs = S.ofs.filter(x => x.id!==rec.id); S.ofs.push(rec); persistOFs();
+  if(window.BPM_CLOUD){ const c = clone(rec); delete c._pending; cloudSaveOF(c); }
+  S.dirty = false; S.cmd = null; S.ofPrev = null; S.of = {mode:'view', id:rec.id}; render(); window.scrollTo(0,0); toast(t('of_saved'));
+}
+function fabClick(b){
+  const k = +b.dataset.idx, id = b.dataset.id;
+  switch(b.dataset.act){
+    case 'of-new': S.cmd = {jour:todayISO(), debut:'06:00', lignes:[], show:false}; S.ofPrev = null; S.dirty = false; S.of = {mode:'new'}; render(); window.scrollTo(0,0); break;
+    case 'of-open': S.of = {mode:'view', id}; render(); window.scrollTo(0,0); break;
+    case 'of-back': if(!guard()) break; S.dirty = false; S.cmd = null; S.ofPrev = null; S.of = {mode:'list'}; render(); window.scrollTo(0,0); break;
+    case 'of-del-line': S.cmd.lignes.splice(k,1); S.dirty = S.cmd.lignes.length > 0; render(); break;
+    case 'of-calc': openCalc(); break;
+    case 'of-save': saveOF(); break;
+    case 'of-edit': { const o = S.ofs.find(x => x.id===id); if(!o) break;
+      S.cmd = {jour:o.jour, debut:hhmm(o.debutMin), lignes:clone(o.commandes||[]), show:false}; S.ofPrev = null; S.dirty = false; S.of = {mode:'new'}; render(); openCalc(); break; }
+    case 'of-del': if(!confirm(t('confirm_del_of'))) break;
+      S.ofs = S.ofs.filter(x => x.id!==id); persistOFs(); cloudDelOF(id); S.of = {mode:'list'}; render(); toast(t('of_deleted')); break;
+  }
+}
+function fabField(el){
+  if(el.id==='addprod'){
+    if(el.value){ const f = S.fiches.find(x => x.id===el.value);
+      S.cmd.lignes.push({ficheId:el.value, quantite:'', unite: f && num(f.pieceCrue) > 0 ? 'piece' : 'kg'}); S.dirty = true; render();
+      const q = document.querySelectorAll('.cmd-q'); if(q.length) q[q.length-1].focus(); }
+    return true;
+  }
+  if(el.dataset.c !== undefined && S.cmd){ S.cmd.lignes[+el.dataset.c][el.dataset.k] = el.value; S.dirty = true; refreshOF(); return true; }
+  if(el.dataset.cf && S.cmd){ S.cmd[el.dataset.cf] = el.value; S.dirty = true; refreshOF(); return true; }
+  return false;
+}
+window.addEventListener('beforeprint', () => document.querySelectorAll('details').forEach(d => d.open = true));
+
+/* ---- Mode terrain : exécution des OF (étapes, minuteurs, alarmes) ---- */
+const ofById = id => S.ofs.find(x => x.id===id);
+const stepKey = (fid, i) => fid + '_' + i;
+const isDone = (o, fid, i) => !!(o.progres && o.progres[stepKey(fid, i)]);
+const lineProg = (o, l) => ({ n:l.etapes.length, d:l.etapes.filter((e,i) => isDone(o, l.ficheId, i)).length });
+const ofProg = o => o.lignes.reduce((a,l) => { const p = lineProg(o,l); return {n:a.n+p.n, d:a.d+p.d}; }, {n:0, d:0});
+const tKey = (oid, fid, i) => oid + '|' + fid + '|' + i;
+const persistTimers = () => { try{ localStorage.setItem('bpm.timers', JSON.stringify(S.timers)); }catch(e){} };
+const mmss = s => { s = Math.max(0, Math.round(s)); const h = Math.floor(s/3600), m = Math.floor(s%3600/60), x = s%60;
+  return (h ? h + ':' + String(m).padStart(2,'0') : String(m).padStart(2,'0')) + ':' + String(x).padStart(2,'0'); };
+const remaining = tm => tm.end ? Math.ceil((tm.end - Date.now())/1000) : (tm.left != null ? tm.left : tm.dur);
+const bar = (d, n) => `<div class="terrain-progress"><div class="bar"><i style="width:${n ? Math.round(d/n*100) : 0}%"></i></div><small>${d}/${n}</small></div>`;
+
+/* Son, vibration, écran allumé, plein écran */
+let audioCtx = null, alarmQ = [], alarmIv = null, wl = null;
+function ensureAudio(){ try{ audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); if(audioCtx.state==='suspended') audioCtx.resume(); }catch(e){} }
+function beep(){
+  try{ if(audioCtx){ const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.type = 'square'; o.frequency.value = 880; g.gain.value = .15;
+    o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + .25); } }catch(e){}
+  try{ if(navigator.vibrate) navigator.vibrate([300,150,300]); }catch(e){}
+}
+function showAlarm(){
+  const el = $('#alarm');
+  if(!alarmQ.length){ el.hidden = true; clearInterval(alarmIv); alarmIv = null; return; }
+  el.hidden = false;
+  el.innerHTML = `<div class="alarm-card"><div class="alarm-ic" aria-hidden="true">⏰</div><h2>${t('time_up')}</h2><p>${esc(alarmQ[0])}</p>
+    <button class="timer-btn" data-alarm="ok" type="button">OK</button></div>`;
+  if(!alarmIv){ beep(); alarmIv = setInterval(beep, 1400); }
+}
+$('#alarm').addEventListener('click', e => { if(e.target.closest('[data-alarm]')){ alarmQ.shift(); showAlarm(); } });
+async function keepAwake(on){
+  try{
+    if(on && !wl && 'wakeLock' in navigator){ wl = await navigator.wakeLock.request('screen'); wl.addEventListener('release', () => { wl = null; }); }
+    else if(!on && wl){ await wl.release(); wl = null; }
+  }catch(e){}
+}
+document.addEventListener('visibilitychange', () => { if(document.visibilityState==='visible' && S.view==='terrain' && S.tr.mode==='run') keepAwake(true); });
+document.addEventListener('fullscreenchange', () => { if(!document.fullscreenElement && S.fs){ S.fs = false; render(); } });
+function toggleFS(){
+  S.fs = !S.fs;
+  try{ if(S.fs && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+       else if(!S.fs && document.fullscreenElement) document.exitFullscreen(); }catch(e){}
+  render();
+}
+
+/* Minuteurs (horodatage de fin : restent exacts même si l'écran se verrouille) */
+function tickAll(){
+  const now = Date.now(); let fired = false;
+  Object.keys(S.timers).forEach(k => { const tm = S.timers[k];
+    if(tm.end && tm.end - now <= 0){ tm.end = null; tm.left = 0; tm.fired = true; fired = true; alarmQ.push(tm.label || ''); } });
+  if(fired){ persistTimers(); showAlarm(); }
+  document.querySelectorAll('[data-tkey]').forEach(el => { const tm = S.timers[el.dataset.tkey]; if(tm) el.textContent = mmss(remaining(tm)); });
+  if(fired && S.view==='terrain') render();
+}
+setInterval(tickAll, 500);
+Object.keys(S.timers).forEach(k => { if(Date.now() - (S.timers[k].t0 || 0) > 36*3600*1000) delete S.timers[k]; });
+
+function timerAct(act, o, l, i){
+  const key = tKey(o.id, l.ficheId, i), e = l.etapes[i], dur = Math.round(num(e.duree)*60);
+  let tm = S.timers[key];
+  if(act==='tr-t-start'){
+    ensureAudio();
+    if(!tm || tm.fired){ tm = S.timers[key] = {dur, left:dur, end:null, fired:false, t0:Date.now()}; }
+    tm.label = t('tp_'+e.type) + ' — ' + lname(l);
+    tm.end = Date.now() + (tm.left != null ? tm.left : dur)*1000;
+  } else if(act==='tr-t-pause' && tm && tm.end){
+    tm.left = Math.max(0, Math.ceil((tm.end - Date.now())/1000)); tm.end = null;
+  } else if(act==='tr-t-reset'){ delete S.timers[key]; }
+  persistTimers(); render();
+}
+function toggleStep(o, l, i){
+  if(!can('exec')) return;
+  const key = stepKey(l.ficheId, i); o.progres = o.progres || {};
+  const val = o.progres[key] ? null : Date.now();
+  if(val) o.progres[key] = val; else delete o.progres[key];
+  if(val){ delete S.timers[tKey(o.id, l.ficheId, i)]; persistTimers(); }
+  persistOFs();
+  if(window.BPM_CLOUD && !o._pending) window.BPM_CLOUD.progress(o.id, key, val);
+  render();
+}
+
+/* Écrans */
+function stripHTML(){
+  const act = Object.keys(S.timers).filter(k => S.timers[k].end || S.timers[k].fired);
+  if(!act.length) return '';
+  return `<div class="tstrip"><strong>${t('running_timers')}</strong>${act.map(k => { const tm = S.timers[k];
+    return `<span class="tchip ${tm.fired ? 'expired' : ''}"><span>${esc(tm.label||'')}</span><b data-tkey="${esc(k)}">${mmss(remaining(tm))}</b></span>`; }).join('')}</div>`;
+}
+function trList(){
+  const arr = [...S.ofs].sort((a,b) => String(b.jour).localeCompare(String(a.jour)));
+  const body = arr.length ? `<div class="terrain-list">${arr.map(o => {
+    const p = ofProg(o), pct = p.n ? Math.round(p.d/p.n*100) : 0, fini = p.n > 0 && p.d===p.n;
+    return `<button class="terrain-card ${fini ? 'done' : ''}" data-act="tr-open-of" data-id="${esc(o.id)}">
+      <span class="big-icon" style="font-size:1.3rem">${fini ? '✓' : pct + '%'}</span>
+      <span><h3>${esc(dayFmt(o.jour))}${o.jour===todayISO() ? ' · ' + t('today') : ''}</h3>
+        <span class="meta">${o.lignes.length} ${t('products_n')} · ${hhmm(o.debutMin)} → ${hhmm(o.finEstimee)}</span></span>
+      <span class="prog">${p.d}/${p.n}<br>${t('steps_n')}</span></button>`; }).join('')}</div>`
+    : `<div class="empty"><strong>${t('e_terrain')}</strong><p>${t('p_terrain')}</p>
+        <button class="btn" data-v="fab" type="button">${t('go_fab')}</button></div>`;
+  return `<h1>${t('h_terrain')}</h1><p class="sub">${t('s_terrain')}</p>${stripHTML()}${body}`;
+}
+function trOF(o){
+  const p = ofProg(o);
+  return `<div class="terrain-run"><div class="terrain-top"><h2>${esc(dayFmt(o.jour))}</h2>
+      <div class="actions"><button class="timer-btn ghost" data-act="tr-back">${t('back')}</button></div></div>
+    ${bar(p.d, p.n)}${stripHTML()}
+    ${!can('exec') ? `<p class="muted">${t('readonly_note')}</p>` : ''}
+    <div class="terrain-list">${o.lignes.map(l => { const lp = lineProg(o,l), fini = lp.n > 0 && lp.d===lp.n;
+      return `<button class="terrain-card ${fini ? 'done' : ''}" data-act="tr-open-line" data-id="${esc(l.ficheId)}">
+        <span class="big-icon" style="font-size:1.15rem">${fini ? '✓' : hhmm(l.heureLancement)}</span>
+        <span><h3>${esc(lname(l))}</h3><span class="meta">${fmt(l.quantite,0,2)} ${t('u_'+l.unite)} · ${fmt(l.pieces,0,0)} ${t('pcs')}</span></span>
+        <span class="prog">${lp.d}/${lp.n}<br>${t('steps_n')}</span></button>`; }).join('')}</div></div>`;
+}
+function trRun(o, l){
+  const lp = lineProg(o,l), ex = can('exec');
+  const steps = l.etapes.map((e,i) => {
+    const done = isDone(o, l.ficheId, i), key = tKey(o.id, l.ficheId, i), tm = S.timers[key], dur = Math.round(num(e.duree)*60);
+    const running = !!(tm && tm.end), expired = !!(tm && tm.fired);
+    const tcls = done ? 'done' : expired ? 'expired' : running ? 'running' : '';
+    const timer = dur > 0 && ex && !done ? `<div class="timer"><span class="timer-display ${tcls}" data-tkey="${esc(key)}">${mmss(tm ? remaining(tm) : dur)}</span>
+      ${running ? `<button class="timer-btn" data-act="tr-t-pause" data-idx="${i}">${t('t_pause')}</button>`
+        : `<button class="timer-btn" data-act="tr-t-start" data-idx="${i}">${tm && !tm.fired ? t('t_resume') : t('t_start')}</button>`}
+      ${tm ? `<button class="timer-btn ghost" data-act="tr-t-reset" data-idx="${i}">${t('t_reset')}</button>` : ''}</div>` : '';
+    return `<section class="step-run ${done ? 'done' : ''} ${running ? 'running' : ''} ${expired && !done ? 'expired' : ''}">
+      <div class="hdr"><span class="typ">${i+1}. ${t('tp_'+e.type)}</span>
+        ${ex ? `<button class="check" data-act="tr-tick" data-idx="${i}" aria-pressed="${done}" aria-label="${t('step_done')}">${done ? '✓' : ''}</button>` : (done ? '<span class="check" style="display:grid;place-items:center">✓</span>' : '')}</div>
+      ${e.desc ? `<div class="desc">${esc(e.desc)}</div>` : ''}
+      ${mediaHTML(stepMedia(l, i))}
+      <div class="target">${t('planned')} ${hhmm(e.debut)}${e.duree ? ' · ' + fmt(e.duree,0,0) + ' ' + t('min') : ''}${e.temp ? ' · ' + esc(e.temp) + ' °C' : ''}</div>${timer}</section>`;
+  }).join('');
+  return `<div class="terrain-run"><div class="terrain-top"><h2>${esc(lname(l))}</h2>
+      <div class="actions"><button class="timer-btn ghost" data-act="tr-fs">${S.fs ? t('exit_fs') : t('fullscreen')}</button>
+      <button class="timer-btn ghost" data-act="tr-back">${t('back')}</button></div></div>
+    ${bar(lp.d, lp.n)}${stripHTML()}
+    <details class="card"><summary>${t('ingr_weigh')}</summary><div class="scroll"><table><tbody>
+      ${l.ingredients.map(i => `<tr><td>${esc(i.nom)}</td><td><strong>${fq(i.qte_g, i.liq)}</strong></td></tr>`).join('')}</tbody></table></div></details>
+    ${steps || `<p class="muted">—</p>`}</div>`;
+}
+function terrainView(){
+  const m = S.tr.mode, o = ofById(S.tr.ofId);
+  if(m==='run' && o){ const l = o.lignes.find(x => x.ficheId===S.tr.fid); if(l) return trRun(o, l); }
+  if((m==='run' || m==='of') && o){ S.tr.mode = 'of'; return trOF(o); }
+  S.tr = {mode:'list'}; return trList();
+}
+function leaveRun(){ S.fs = false; try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){} }
+function terrainClick(b){
+  const act = b.dataset.act, id = b.dataset.id, i = +b.dataset.idx, o = ofById(S.tr.ofId);
+  const l = o && o.lignes.find(x => x.ficheId===S.tr.fid);
+  switch(act){
+    case 'tr-open-of': S.tr = {mode:'of', ofId:id}; render(); window.scrollTo(0,0); break;
+    case 'tr-open-line': S.tr = {mode:'run', ofId:S.tr.ofId, fid:id}; render(); window.scrollTo(0,0); break;
+    case 'tr-back': if(S.tr.mode==='run'){ leaveRun(); S.tr.mode = 'of'; } else S.tr = {mode:'list'}; render(); window.scrollTo(0,0); break;
+    case 'tr-fs': toggleFS(); break;
+    case 'tr-tick': if(o && l) toggleStep(o, l, i); break;
+    case 'tr-t-start': case 'tr-t-pause': case 'tr-t-reset': if(o && l) timerAct(act, o, l, i); break;
+  }
+}
+
 /* ---- Événements ---- */
 $('#view').addEventListener('click', e => {
   const fam = e.target.closest('[data-fam]');
   if(fam){ S.ffam = fam.dataset.fam; S.q = ''; S.fst = ''; go('fiches'); return; }
   const b = e.target.closest('[data-act]'); if(!b) return;
+  if(b.dataset.act.startsWith('of-')){ fabClick(b); return; }
+  if(b.dataset.act.startsWith('tr-')){ terrainClick(b); return; }
   const id = b.dataset.id, k = +b.dataset.idx, d = S.draft;
   switch(b.dataset.act){
     case 'open': S.fv = {mode:'view', id}; render(); window.scrollTo(0,0); break;
@@ -938,7 +1489,11 @@ $('#view').addEventListener('click', e => {
     case 'edit': startEdit(S.fiches.find(x => x.id===id)); break;
     case 'dup': duplicate(id); break;
     case 'del': remove(id); break;
-    case 'print': window.print(); break;
+    case 'print': toast(t('pdf_hint')); setTimeout(() => window.print(), 250); break;
+    case 'pdf': printFiche(S.fv.id); break;
+    case 'qr': showQR(S.fv.id); break;
+    case 'src-del': { const s = d.sources[k]; if(s && s.path) (d._rm = d._rm || []).push(s.path); d.sources.splice(k,1); S.dirty = true; render(); break; }
+    case 'media-del': { const e2 = d.etapes[k]; if(e2 && e2.media && e2.media.path) (d._rm = d._rm || []).push(e2.media.path); if(e2) delete e2.media; S.dirty = true; render(); break; }
     case 'seed': seedExamples(); render(); break;
     case 'back': if(!guard()) return; leaveEditor(); S.fv = {mode:'list'}; render(); window.scrollTo(0,0); break;
     case 'save': saveDraft(); break;
@@ -957,6 +1512,9 @@ function onField(e){
   if(el.id==='q'){ S.q = el.value; $('#list').innerHTML = listHTML(); return; }
   if(el.id==='ffam'){ S.ffam = el.value; $('#list').innerHTML = listHTML(); return; }
   if(el.id==='fst'){ S.fst = el.value; $('#list').innerHTML = listHTML(); return; }
+  if(el.dataset.media !== undefined){ handleStepMedia(+el.dataset.media, el.files && el.files[0]); el.value = ''; return; }
+  if(el.id==='srcfile'){ handleSource(el.files && el.files[0]); el.value = ''; return; }
+  if(S.view==='fab' && fabField(el)) return;
   if(el.id==='photo'){ if(el.files[0]) readPhoto(el.files[0]); return; }
   if(!d) return;
   if(el.dataset.i !== undefined){ d.ingredients[+el.dataset.i][el.dataset.k] = el.value; }
@@ -974,7 +1532,21 @@ $('#langBtn').addEventListener('click', () => setLang(S.lang==='fr' ? 'ar' : 'fr
 $('#role').addEventListener('change', e => { S.role = e.target.value; store.set('role', S.role); render(); });
 window.addEventListener('online', netStatus); window.addEventListener('offline', netStatus);
 window.addEventListener('beforeunload', e => { if(S.dirty){ e.preventDefault(); e.returnValue = ''; } });
+function applyPending(){
+  if(S.pendingFiche && S.fiches.some(f => f.id===S.pendingFiche)){
+    S.view = 'fiches'; S.fv = {mode:'view', id:S.pendingFiche}; S.pendingFiche = null;
+    try{ history.replaceState(null, '', location.pathname + location.search); }catch(e){}
+    return true;
+  }
+  return false;
+}
+function route(){
+  const m = /^fiche=(.+)$/.exec(location.hash.slice(1));
+  if(m){ S.pendingFiche = decodeURIComponent(m[1]); if(applyPending()) render(); }
+}
+window.addEventListener('hashchange', route);
 const h0 = location.hash.slice(1); if(NAV.includes(h0)) S.view = h0;
+route();
 render();
 if('serviceWorker' in navigator){ window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {})); }
 
@@ -993,18 +1565,23 @@ if('serviceWorker' in navigator){ window.addEventListener('load', () => navigato
   }catch(err){ console.warn('[Cloud] indisponible :', err); B.cloudUnavailable(); return; }
 
   const ROLE_OK = ['chef', 'equipe', 'moniteur'];
-  let unsubP = null, unsubF = null, startedFor = null, migrating = false;
+  let unsubP = null, unsubF = null, unsubO = null, startedFor = null, migrating = false;
 
   window.BPM_CLOUD = {
     save:   f  => cloud.saveFiche(f).catch(e => B.cloudError(e)),
     del:    id => cloud.deleteFiche(id).catch(e => B.cloudError(e)),
+    saveOF: o  => cloud.saveOF(o).catch(e => B.cloudError(e)),
+    delOF:  id => cloud.deleteOF(id).catch(e => B.cloudError(e)),
+    upload: (path, file, cb) => cloud.uploadFile(path, file, cb),
+    removeFile: p => cloud.deleteStorageFile(p).catch(() => {}),
+    progress: (id, key, val) => cloud.setOFProgress(id, key, val).catch(e => { if(!e || e.code !== 'not-found') B.cloudError(e); }),
     login:  (email, pwd) => cloud.loginEmail(email, pwd),
     signup: (email, pwd) => cloud.signupEmail(email, pwd),
     google: () => cloud.loginGoogle(),
     logout: () => cloud.logout()
   };
 
-  function stop(){ if(unsubP){ unsubP(); unsubP = null; } if(unsubF){ unsubF(); unsubF = null; } startedFor = null; }
+  function stop(){ if(unsubP){ unsubP(); unsubP = null; } if(unsubF){ unsubF(); unsubF = null; } if(unsubO){ unsubO(); unsubO = null; } startedFor = null; }
 
   function startFiches(role){
     if(unsubF) return;
@@ -1037,12 +1614,14 @@ if('serviceWorker' in navigator){ window.addEventListener('load', () => navigato
     unsubP = cloud.watchProfile(user.uid, prof => {
       if(!prof || !ROLE_OK.includes(prof.role)){
         if(unsubF){ unsubF(); unsubF = null; }
+        if(unsubO){ unsubO(); unsubO = null; }
         B.authState('pending', user);
         return;
       }
       B.setRole(prof.role);
       B.authState('ready', user);
       startFiches(prof.role);
+      if(!unsubO) unsubO = cloud.watchOFs(arr => B.setOFs(arr));
     });
   });
 })();
