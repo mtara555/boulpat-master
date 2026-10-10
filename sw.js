@@ -1,6 +1,6 @@
 // BOULPAT MASTER - Service worker (offline-first pour le shell applicatif)
-const CACHE = 'boulpat-shell-v6';
-const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './logo.png', './firebase-config.js', './firebase-sync.js', './of-engine.js'];
+const CACHE = 'boulpat-shell-v9';
+const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './logo.png', './firebase-config.js', './firebase-sync.js', './of-engine.js', './qr.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
