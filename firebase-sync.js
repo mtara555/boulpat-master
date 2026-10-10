@@ -32,6 +32,7 @@ import {
   doc,
   setDoc,
   deleteDoc,
+  updateDoc,
   onSnapshot,
   serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
@@ -160,6 +161,15 @@ export async function deleteOF(id){
  * Écoute temps réel de tous les OF.
  * Utile pour l'historique et le mode terrain.
  */
+/**
+ * Met à jour UNE étape d'un OF (progression du mode terrain) sans réécrire tout le document.
+ * val = horodatage (étape faite) ou null (étape décochée).
+ */
+export async function setOFProgress(ofId, key, val){
+  const ref = doc(db, 'companies', COMPANY_ID, 'ofs', ofId);
+  await updateDoc(ref, { ['progres.' + key]: val });
+}
+
 export function watchOFs(cb){
   return onSnapshot(ofsCol(),
     snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
@@ -183,3 +193,26 @@ export function loadOF(id, cb){
 // EXPORTS UTILITAIRES (pour débogage éventuel)
 // ============================================================
 export { COMPANY_ID };
+
+
+// ============================================================
+// FICHIERS (Cloud Storage) — fichier source du moniteur, vidéos des étapes
+// Chargé à la demande : l'appli fonctionne même si Storage n'est pas activé.
+// ============================================================
+const STORAGE_SDK = 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
+
+/** Envoie un fichier dans companies/{COMPANY_ID}/{path}. Retourne { url, path }. */
+export async function uploadFile(path, file, onProgress){
+  const m = await import(STORAGE_SDK);
+  const r = m.ref(m.getStorage(app), `companies/${COMPANY_ID}/${path}`);
+  const task = m.uploadBytesResumable(r, file, { contentType: file.type || 'application/octet-stream' });
+  await new Promise((res, rej) => task.on('state_changed',
+    s => onProgress && onProgress(s.totalBytes ? s.bytesTransferred / s.totalBytes : 0), rej, res));
+  return { url: await m.getDownloadURL(r), path: r.fullPath };
+}
+
+/** Supprime un fichier Storage (chemin complet retourné par uploadFile). */
+export async function deleteStorageFile(fullPath){
+  const m = await import(STORAGE_SDK);
+  await m.deleteObject(m.ref(m.getStorage(app), fullPath));
+}
