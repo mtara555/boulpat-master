@@ -1,0 +1,28 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Un membre = un utilisateur ayant un profil companies/{id}/users/{uid} dans Firestore
+    function isMember(companyId) {
+      return request.auth != null
+        && firestore.exists(/databases/(default)/documents/companies/$(companyId)/users/$(request.auth.uid));
+    }
+    function isChef(companyId) {
+      return isMember(companyId)
+        && firestore.get(/databases/(default)/documents/companies/$(companyId)/users/$(request.auth.uid)).data.role == 'chef';
+    }
+
+    // Fichiers source (PDF, Excel, Word…) et vidéos des étapes
+    match /companies/{companyId}/{allPaths=**} {
+      allow read:  if isMember(companyId);
+      allow write: if isChef(companyId)
+                   && request.resource != null
+                   && request.resource.size < 30 * 1024 * 1024;   // 30 Mo max
+      allow delete: if isChef(companyId);
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

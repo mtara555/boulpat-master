@@ -32,11 +32,18 @@ pour le rayon **Boulangerie-Pâtisserie**.
 - [x] Étape 2 — Déploiement automatique GitHub Pages
 - [x] Étape 3 — Firebase (Firestore + Auth)
 - [x] Étape 4 — Sync temps réel des fiches
-- [ ] Étape 5 — Module Fabrication (Ordres de Fabrication)
-- [ ] Étape 6 — Mode Terrain (minuteur, offline)
+- [x] Étape 5 — Module Fabrication (Ordres de Fabrication)
+- [x] Étape 6 — Mode Terrain (minuteur, offline)
+- [x] Fichiers source du moniteur, photos/vidéos des étapes, QR code, export PDF
 - [ ] Étape 7 — HACCP + étiquettes légales
 - [ ] Étape 8 — PWA installable + notifications
 
 ---
 
 *Projet privé — La Pâtisserie / BoulPat Master*
+
+## Cloud Storage (fichier source, vidéos des étapes)
+
+1. Console Firebase → **Storage** → *Commencer* (le plan Blaze peut être exigé ; il reste gratuit dans les quotas).
+2. Onglet **Règles** → collez le contenu de `storage.rules` → *Publier*.
+3. Sans Storage, tout fonctionne sauf l'envoi du fichier source et des vidéos (les photos des étapes sont intégrées à la fiche).
