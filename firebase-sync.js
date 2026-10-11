@@ -33,7 +33,11 @@ import {
   setDoc,
   deleteDoc,
   updateDoc,
+  orderBy,
+  limit,
   onSnapshot,
+  query,
+  where,
   serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
@@ -105,9 +109,10 @@ export async function saveFiche(f){
  */
 export function watchProfile(uid, cb){
   const ref = doc(db, 'companies', COMPANY_ID, 'users', uid);
-  return onSnapshot(ref,
-    snap => cb(snap.exists() ? snap.data() : null),
-    err => { console.error('[Firestore] watchProfile :', err); cb(null); }
+  // cb(profil | null, { fromCache } | { error })  — includeMetadataChanges : on est prévenu quand le serveur confirme
+  return onSnapshot(ref, { includeMetadataChanges: true },
+    snap => cb(snap.exists() ? snap.data() : null, { fromCache: snap.metadata.fromCache }),
+    err => { console.error('[Firestore] watchProfile :', err); cb(null, { error: err.code || String(err) }); }
   );
 }
 
@@ -215,4 +220,60 @@ export async function uploadFile(path, file, onProgress){
 export async function deleteStorageFile(fullPath){
   const m = await import(STORAGE_SDK);
   await m.deleteObject(m.ref(m.getStorage(app), fullPath));
+}
+
+
+// ============================================================
+// QUALITÉ (V2) : équipements, relevés de température, plan de nettoyage, lots
+// ============================================================
+/** Écoute une collection companies/{COMPANY_ID}/{name}. since = 'YYYY-MM-DD' : ne charge que les documents dont `jour` >= since. */
+export function watchColl(name, cb, since){
+  const col = collection(db, 'companies', COMPANY_ID, name);
+  const q = since ? query(col, where('jour', '>=', since)) : col;
+  return onSnapshot(q,
+    snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+    err => console.error('[Firestore] watchColl ' + name + ' :', err)
+  );
+}
+export async function saveInColl(name, obj){
+  const { id, _syncedAt, ...data } = obj;
+  await setDoc(doc(db, 'companies', COMPANY_ID, name, id), { ...data, _syncedAt: serverTimestamp() });
+}
+export async function deleteInColl(name, id){
+  await deleteDoc(doc(db, 'companies', COMPANY_ID, name, id));
+}
+/** Lot utilisé pour un ingrédient d'un OF (champ lots.<clé>) ; val = null pour retirer. */
+export async function setOFLot(ofId, key, val){
+  await updateDoc(doc(db, 'companies', COMPANY_ID, 'ofs', ofId), { ['lots.' + key]: val });
+}
+
+
+// ============================================================
+// V2 — QUALITÉ : HACCP (relevés, nettoyage), lots, configuration, étiquettes
+// ============================================================
+const coll = name => collection(db, 'companies', COMPANY_ID, name);
+
+/** Écoute les N derniers documents d'une collection (triés par `field` décroissant). */
+export function watchRecent(name, field, n, cb){
+  const q = query(coll(name), orderBy(field, 'desc'), limit(n));
+  return onSnapshot(q,
+    snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+    err => console.error('[Firestore] watchRecent ' + name + ' :', err));
+}
+
+/** Écoute un document (configuration). cb(null) s'il n'existe pas. */
+export function watchDocIn(name, id, cb){
+  return onSnapshot(doc(db, 'companies', COMPANY_ID, name, id),
+    snap => cb(snap.exists() ? snap.data() : null),
+    err => console.error('[Firestore] watchDocIn ' + name + ' :', err));
+}
+
+/** Crée ou fusionne un document (les champs absents sont conservés, null = valeur effacée). */
+export async function saveItem(name, obj){
+  const { id, _pending, _savedAt, ...data } = obj;
+  await setDoc(doc(db, 'companies', COMPANY_ID, name, id), { ...data, _savedAt: serverTimestamp() }, { merge: true });
+}
+
+export async function removeItem(name, id){
+  await deleteDoc(doc(db, 'companies', COMPANY_ID, name, id));
 }

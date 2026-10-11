@@ -35,7 +35,7 @@ pour le rayon **Boulangerie-Pâtisserie**.
 - [x] Étape 5 — Module Fabrication (Ordres de Fabrication)
 - [x] Étape 6 — Mode Terrain (minuteur, offline)
 - [x] Fichiers source du moniteur, photos/vidéos des étapes, QR code, export PDF
-- [ ] Étape 7 — HACCP + étiquettes légales
+- [x] Étape 7 — HACCP, traçabilité des lots, étiquettes allergènes (V2)
 - [ ] Étape 8 — PWA installable + notifications
 
 ---
@@ -47,3 +47,13 @@ pour le rayon **Boulangerie-Pâtisserie**.
 1. Console Firebase → **Storage** → *Commencer* (le plan Blaze peut être exigé ; il reste gratuit dans les quotas).
 2. Onglet **Règles** → collez le contenu de `storage.rules` → *Publier*.
 3. Sans Storage, tout fonctionne sauf l'envoi du fichier source et des vidéos (les photos des étapes sont intégrées à la fiche).
+
+## V2 — Qualité (onglet « Qualité »)
+
+- **Températures** : équipements et seuils configurables (Chef), relevés horodatés, action corrective obligatoire hors limites.
+- **Nettoyage** : plan quotidien / hebdomadaire à cocher, historique par jour.
+- **Lots reçus** : registre (ingrédient, n° de lot, fournisseur, DLC) avec alertes périmé / < 7 jours.
+- **Traçabilité** : n° de lot saisi dans chaque OF ; recherche d'un lot → OF et produits concernés.
+- **Étiquettes** : depuis une fiche (bouton « Étiquette »), FR / AR, A7 · A6 · 100×70 mm. Modèle indicatif à faire valider (ONSSA / responsable qualité).
+
+Collections Firestore : `equipements`, `taches`, `releves`, `nettoyages`, `lots`, `config/etiquette` (voir `firestore.rules`).

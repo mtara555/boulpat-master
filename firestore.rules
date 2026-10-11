@@ -35,6 +35,17 @@ service cloud.firestore {
       allow delete: if isChef(companyId);
     }
 
+    // Qualité (V2) : équipements et plan de nettoyage = configuration (Chef) ;
+    // relevés, nettoyages et lots = saisie par le Chef et l'équipe.
+    match /companies/{companyId}/{coll}/{docId} {
+      allow read: if coll in ['equipements', 'taches', 'releves', 'nettoyages', 'lots', 'config'] && isMember(companyId);
+      allow create, update: if (coll in ['equipements', 'taches', 'config'] && isChef(companyId))
+                            || (coll in ['releves', 'nettoyages', 'lots'] && canExecute(companyId));
+      allow delete: if (coll in ['equipements', 'taches', 'releves', 'lots', 'config'] && isChef(companyId))
+                    || (coll == 'nettoyages' && canExecute(companyId));
+    }
+
+
     // Par défaut : tout refusé
     match /{document=**} {
       allow read, write: if false;
